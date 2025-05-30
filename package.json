@@ -1,0 +1,58 @@
+{
+  "name": "muchandy-webapp",
+  "version": "1.0.0",
+  "description": "Muchandy website built with Svarog UI and Storyblok CMS",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "lint": "eslint src --ext .js --fix",
+    "lint:check": "eslint src --ext .js",
+    "format": "prettier --write src/**/*.{js,css,html}",
+    "format:check": "prettier --check src/**/*.{js,css,html}",
+    "clean": "rm -rf dist node_modules/.vite",
+    "clean:all": "rm -rf dist node_modules package-lock.json && npm install",
+    "analyze": "npm run build -- --mode analyze",
+    "serve": "npm run build && npm run preview",
+    "validate": "npm run lint:check && npm run format:check",
+    "prepare": "npm run validate",
+    "start": "npm run dev",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod --dir=dist",
+    "storyblok:login": "storyblok login",
+    "storyblok:pull": "storyblok pull-components --space=your-space-id",
+    "storyblok:push": "storyblok push-components --space=your-space-id"
+  },
+  "keywords": [
+    "muchandy",
+    "svarog-ui",
+    "storyblok",
+    "vanilla-javascript",
+    "spa"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "svarog-ui-core": "^4.0.0",
+    "@svarog-ui/theme-muchandy": "^4.0.0",
+    "storyblok-js-client": "^6.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "@vitejs/plugin-legacy": "^5.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0",
+    "rollup-plugin-analyzer": "^4.0.0",
+    "storyblok": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": [
+    "defaults",
+    "not IE 11"
+  ]
+}
