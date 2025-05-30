@@ -19,24 +19,11 @@
     "validate": "npm run lint:check && npm run format:check",
     "prepare": "npm run validate",
     "start": "npm run dev",
-    "deploy:vercel": "vercel --prod",
-    "deploy:netlify": "netlify deploy --prod --dir=dist",
-    "storyblok:login": "storyblok login",
-    "storyblok:pull": "storyblok pull-components --space=your-space-id",
-    "storyblok:push": "storyblok push-components --space=your-space-id"
+    "test": "node test-svarog.js"
   },
-  "keywords": [
-    "muchandy",
-    "svarog-ui",
-    "storyblok",
-    "vanilla-javascript",
-    "spa"
-  ],
-  "author": "Your Name",
-  "license": "MIT",
   "dependencies": {
-    "svarog-ui-core": "^4.0.0",
-    "@svarog-ui/theme-muchandy": "^4.0.0",
+    "svarog-ui-core": "^2.3.0",
+    "@svarog-ui/theme-muchandy": "^1.5.0",
     "storyblok-js-client": "^6.0.0"
   },
   "devDependencies": {
@@ -46,13 +33,5 @@
     "prettier": "^3.2.0",
     "rollup-plugin-analyzer": "^4.0.0",
     "storyblok": "^3.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
-  "browserslist": [
-    "defaults",
-    "not IE 11"
-  ]
+  }
 }

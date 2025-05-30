@@ -1,7 +1,6 @@
-import { createElement } from 'svarog-ui-core';
+import { createElement, ThemeManager } from 'svarog-ui-core';
 import { router } from '../utils/router.js';
 import createPage from './Page.js';
-import MuchandyTheme from '@svarog-ui/theme-muchandy';
 
 console.log('=== APP.JS LOADING ===');
 
@@ -12,13 +11,41 @@ const createApp = () => {
   let currentPage = null;
   let pageContainer = null;
 
-  console.log('Applying Muchandy theme...');
-  try {
-    MuchandyTheme.apply();
-    console.log('✅ Muchandy theme applied successfully');
-  } catch (error) {
-    console.error('❌ Error applying Muchandy theme:', error);
-  }
+  // Load Muchandy theme using the new pattern
+  const loadTheme = async () => {
+    console.log('Loading Muchandy theme...');
+    try {
+      // Try the new API first
+      if (ThemeManager && ThemeManager.load) {
+        await ThemeManager.load('muchandy');
+        console.log('✅ Muchandy theme loaded via ThemeManager');
+      } else {
+        // Fallback to importing and applying manually
+        const MuchandyTheme = await import('@svarog-ui/theme-muchandy');
+        if (MuchandyTheme.default && MuchandyTheme.default.apply) {
+          MuchandyTheme.default.apply();
+          console.log('✅ Muchandy theme applied manually');
+        } else if (MuchandyTheme.apply) {
+          MuchandyTheme.apply();
+          console.log('✅ Muchandy theme applied directly');
+        } else {
+          throw new Error('Unable to apply Muchandy theme');
+        }
+      }
+
+      // Verify theme variables are loaded
+      const testVar = getComputedStyle(
+        document.documentElement
+      ).getPropertyValue('--button-bg');
+      if (!testVar) {
+        console.warn('⚠️ Theme variables may not be loaded correctly');
+      } else {
+        console.log('✅ Theme variables verified');
+      }
+    } catch (error) {
+      console.error('❌ Error loading Muchandy theme:', error);
+    }
+  };
 
   const handleRoute = async (path) => {
     console.log(`=== HANDLING ROUTE: ${path} ===`);
@@ -27,7 +54,6 @@ const createApp = () => {
       console.error('❌ Page container not available');
       return;
     }
-    console.log('✅ Page container available');
 
     // Clean up current page
     if (currentPage) {
@@ -38,34 +64,23 @@ const createApp = () => {
     // Create new page
     console.log('Creating new page...');
     currentPage = createPage();
-    console.log('✅ New page created');
 
     // Determine story slug from path
     const slug = path === '/' ? 'home' : path.substring(1);
     console.log(`Loading story with slug: ${slug}`);
 
     try {
-      console.log('Loading story from Storyblok...');
       await currentPage.loadStory(slug);
-      console.log('✅ Story loaded successfully');
-
-      console.log('Getting page element...');
       const pageElement = currentPage.getElement();
-      console.log('✅ Page element retrieved:', pageElement);
 
-      console.log('Clearing page container...');
       pageContainer.innerHTML = '';
-
-      console.log('Appending page element...');
       pageContainer.appendChild(pageElement);
       console.log('✅ Page rendered successfully');
     } catch (error) {
       console.error('❌ Route handling error:', error);
-      console.error('Error stack:', error.stack);
 
-      // Show the actual error using correct createElement
       const errorElement = createElement('div', {
-        classes: 'error-container',
+        classes: ['error-container'],
         style: {
           padding: '2rem',
           color: 'red',
@@ -73,16 +88,20 @@ const createApp = () => {
           margin: '1rem',
           borderRadius: '4px',
         },
-        html: `
-          <h2>Error Loading Content</h2>
-          <p><strong>Error:</strong> ${error.message}</p>
-          <p><strong>Path:</strong> ${path}</p>
-          <p><strong>Slug:</strong> ${slug}</p>
-          <details>
-            <summary>Stack Trace</summary>
-            <pre>${error.stack}</pre>
-          </details>
-        `,
+        children: [
+          createElement('h2', { text: 'Error Loading Content' }),
+          createElement('p', {
+            html: `<strong>Error:</strong> ${error.message}`,
+          }),
+          createElement('p', { html: `<strong>Path:</strong> ${path}` }),
+          createElement('p', { html: `<strong>Slug:</strong> ${slug}` }),
+          createElement('details', {
+            children: [
+              createElement('summary', { text: 'Stack Trace' }),
+              createElement('pre', { text: error.stack }),
+            ],
+          }),
+        ],
       });
 
       pageContainer.innerHTML = '';
@@ -90,62 +109,44 @@ const createApp = () => {
     }
   };
 
-  const render = () => {
+  const render = async () => {
     console.log('Rendering app element...');
 
-    // Create app container using Svarog createElement
+    // Load theme before rendering
+    await loadTheme();
+
+    // Create app container
     element = createElement('div', {
       classes: ['app', 'muchandy-theme'],
     });
-    console.log('✅ App div created with classes:', element.className);
 
-    // Create content container using Svarog createElement
+    // Create content container
     pageContainer = createElement('div', {
-      classes: 'app-content',
+      classes: ['app-content'],
     });
-    console.log(
-      '✅ Content container created with classes:',
-      pageContainer.className
-    );
 
-    // Append content to app
     element.appendChild(pageContainer);
-    console.log('✅ Content container appended to app');
-
-    // Debug the structure
-    console.log('Final element structure:');
-    console.log('- Element tag:', element.tagName);
-    console.log('- Element classes:', element.className);
-    console.log('- Element children:', element.children.length);
-    console.log('- First child classes:', element.children[0]?.className);
-
     return element;
   };
 
-  const init = () => {
+  const init = async () => {
     console.log('Initializing app...');
 
-    console.log('Setting up router...');
+    // Setup router
     router.addRoute('/', handleRoute);
     router.addRoute('*', handleRoute);
-    console.log('✅ Router routes added');
 
-    console.log('Rendering app...');
-    render();
-    console.log('✅ App rendered');
+    // Render app
+    await render();
 
-    console.log('Handling initial route...');
+    // Handle initial route
     router.handleRoute();
-    console.log('✅ Initial route handled');
 
     return element;
   };
 
   return {
-    getElement: () => {
-      console.log('getElement called, element exists:', !!element);
-      return element || init();
-    },
+    getElement: () => element || init(),
     destroy() {
       console.log('Destroying app...');
       if (currentPage) currentPage.destroy();
@@ -156,5 +157,4 @@ const createApp = () => {
   };
 };
 
-console.log('✅ App factory function created');
 export default createApp;

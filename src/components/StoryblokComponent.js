@@ -24,7 +24,7 @@ function renderHero(blok) {
   console.log('Rendering hero:', blok);
 
   const heroElement = createElement('section', {
-    classes: 'svarog-hero',
+    classes: ['svarog-hero'],
     style: {
       minHeight: '60vh',
       display: 'flex',
@@ -45,77 +45,81 @@ function renderHero(blok) {
   const children = [];
 
   if (blok.title) {
-    const title = createElement('h1', {
-      classes: 'svarog-hero__title',
-      text: blok.title,
-      style: {
-        fontSize: 'clamp(2rem, 5vw, 4rem)',
-        fontWeight: '700',
-        margin: '0 0 1rem 0',
-        lineHeight: '1.2',
-      },
-    });
-    children.push(title);
+    children.push(
+      createElement('h1', {
+        classes: ['svarog-hero__title'],
+        text: blok.title,
+        style: {
+          fontSize: 'clamp(2rem, 5vw, 4rem)',
+          fontWeight: '700',
+          margin: '0 0 1rem 0',
+          lineHeight: '1.2',
+        },
+      })
+    );
   }
 
   if (blok.subtitle) {
-    const subtitle = createElement('p', {
-      classes: 'svarog-hero__subtitle',
-      text: blok.subtitle,
-      style: {
-        fontSize: 'clamp(1rem, 3vw, 1.5rem)',
-        margin: '0 0 2rem 0',
-        opacity: '0.9',
-        lineHeight: '1.4',
-      },
-    });
-    children.push(subtitle);
+    children.push(
+      createElement('p', {
+        classes: ['svarog-hero__subtitle'],
+        text: blok.subtitle,
+        style: {
+          fontSize: 'clamp(1rem, 3vw, 1.5rem)',
+          margin: '0 0 2rem 0',
+          opacity: '0.9',
+          lineHeight: '1.4',
+        },
+      })
+    );
   }
 
   if (blok.cta_text && blok.cta_link?.url) {
-    console.log('Creating CTA button with props:', {
-      text: blok.cta_text,
-      href: blok.cta_link.url,
-      variant: 'secondary',
-      size: 'lg', // Using correct Svarog size
-    });
-
     try {
       const ctaButton = Button({
-        text: blok.cta_text, // Required prop
-        href: blok.cta_link.url,
+        text: blok.cta_text,
         variant: 'secondary',
-        size: 'lg', // Valid Svarog size (not 'large')
+        size: 'lg',
         className: 'hero-cta-button',
+        onClick: (e) => {
+          if (blok.cta_link.url.startsWith('http')) {
+            window.open(blok.cta_link.url, blok.cta_link.target || '_self');
+          } else {
+            e.preventDefault();
+            router.navigate(blok.cta_link.url);
+          }
+        },
       });
       children.push(ctaButton.getElement());
-      console.log('✅ CTA button created successfully');
     } catch (error) {
       console.error('❌ Error creating CTA button:', error);
-      // Add fallback button
-      const fallbackButton = createElement('a', {
-        attributes: {
-          href: blok.cta_link.url,
-          class: 'btn btn--secondary btn--lg',
-        },
-        text: blok.cta_text,
-        style: {
-          display: 'inline-block',
-          padding: '1rem 2rem',
-          background: 'var(--color-secondary, #37474F)',
-          color: 'white',
-          textDecoration: 'none',
-          borderRadius: '0.5rem',
-          marginTop: '1rem',
-        },
-      });
-      children.push(fallbackButton);
+
+      // Fallback link
+      children.push(
+        createElement('a', {
+          attributes: {
+            href: blok.cta_link.url,
+            target: blok.cta_link.target || '_self',
+            class: 'btn btn--secondary btn--lg',
+          },
+          text: blok.cta_text,
+          style: {
+            display: 'inline-block',
+            padding: '1rem 2rem',
+            background: 'var(--button-secondary-bg, #37474F)',
+            color: 'var(--button-secondary-color, white)',
+            textDecoration: 'none',
+            borderRadius: 'var(--button-radius, 0.5rem)',
+            marginTop: '1rem',
+          },
+        })
+      );
     }
   }
 
-  // Append all children
   children.forEach((child) => heroElement.appendChild(child));
 
+  // Return component-like API
   return {
     getElement: () => heroElement,
     update: () => {},
@@ -127,7 +131,7 @@ function renderSection(blok) {
   console.log('Rendering section:', blok);
 
   const sectionElement = createElement('section', {
-    classes: 'svarog-section',
+    classes: ['svarog-section'],
     style: {
       padding: 'var(--space-8, 2rem) var(--space-4, 1rem)',
       maxWidth: '1200px',
@@ -135,50 +139,46 @@ function renderSection(blok) {
     },
   });
 
-  const children = [];
-
   if (blok.title) {
-    const title = createElement('h2', {
-      text: blok.title,
-      style: {
-        fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
-        fontWeight: '700',
-        margin: '0 0 1rem 0',
-        color: 'var(--color-primary, #FF6B35)',
-      },
-    });
-    children.push(title);
+    sectionElement.appendChild(
+      createElement('h2', {
+        text: blok.title,
+        style: {
+          fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+          fontWeight: '700',
+          margin: '0 0 1rem 0',
+          color: 'var(--color-primary, #FF6B35)',
+        },
+      })
+    );
   }
 
   if (blok.subtitle) {
-    const subtitle = createElement('p', {
-      text: blok.subtitle,
-      style: {
-        fontSize: '1.125rem',
-        margin: '0 0 2rem 0',
-        opacity: '0.8',
-      },
-    });
-    children.push(subtitle);
+    sectionElement.appendChild(
+      createElement('p', {
+        text: blok.subtitle,
+        style: {
+          fontSize: '1.125rem',
+          margin: '0 0 2rem 0',
+          opacity: '0.8',
+        },
+      })
+    );
   }
-
-  // Append header elements
-  children.forEach((child) => sectionElement.appendChild(child));
 
   // Render nested components
   if (blok.content && blok.content.length > 0) {
-    console.log('Rendering nested content:', blok.content.length, 'items');
-
     const contentContainer = createElement('div', {
-      classes: 'section-content',
+      classes: ['section-content'],
       style: {
         display: 'grid',
         gap: 'var(--space-6, 1.5rem)',
+        gridTemplateColumns:
+          blok.columns || 'repeat(auto-fit, minmax(300px, 1fr))',
       },
     });
 
     blok.content.forEach((nestedBlok, index) => {
-      console.log(`Rendering nested component ${index}:`, nestedBlok);
       try {
         const nestedComponent = renderStoryblokComponent(nestedBlok);
         if (nestedComponent) {
@@ -187,18 +187,18 @@ function renderSection(blok) {
       } catch (error) {
         console.error(`Error rendering nested component ${index}:`, error);
 
-        // Add error indicator
-        const errorElement = createElement('div', {
-          classes: 'component-error',
-          style: {
-            padding: '1rem',
-            background: '#fee',
-            border: '1px solid red',
-            borderRadius: '4px',
-          },
-          html: `<strong>Error:</strong> ${error.message}`,
-        });
-        contentContainer.appendChild(errorElement);
+        contentContainer.appendChild(
+          createElement('div', {
+            classes: ['component-error'],
+            style: {
+              padding: '1rem',
+              background: '#fee',
+              border: '1px solid red',
+              borderRadius: '4px',
+            },
+            html: `<strong>Error:</strong> ${error.message}`,
+          })
+        );
       }
     });
 
@@ -213,102 +213,81 @@ function renderSection(blok) {
 }
 
 function renderCard(blok) {
-  console.log('Rendering card with props:', {
+  if (!blok.title) {
+    console.warn('Card missing required title, using default');
+    blok.title = 'Untitled';
+  }
+
+  return Card({
     title: blok.title,
-    description: blok.description,
+    description: blok.description || '',
     imageUrl: blok.image?.filename,
-    alt: blok.image?.alt,
+    alt: blok.image?.alt || blok.title,
     href: blok.link?.url,
     variant: blok.variant || 'default',
+    onClick: blok.link?.url ? undefined : blok.onClick,
   });
-
-  try {
-    return Card({
-      title: blok.title || 'Untitled Card', // Ensure title exists
-      description: blok.description || '',
-      imageUrl: blok.image?.filename,
-      alt: blok.image?.alt,
-      href: blok.link?.url,
-      variant: blok.variant || 'default',
-    });
-  } catch (error) {
-    console.error('Error creating Card:', error);
-    throw error;
-  }
 }
 
 function renderBlogCard(blok) {
-  console.log('Rendering blog card with props:', {
-    title: blok.title,
-    description: blok.description,
-    imageUrl: blok.image?.filename,
-    alt: blok.image?.alt,
-    href: blok.link?.url,
-  });
-
-  try {
-    return BlogCard({
-      title: blok.title || 'Untitled Blog Post',
-      description: blok.description || '',
-      imageUrl: blok.image?.filename,
-      alt: blok.image?.alt,
-      href: blok.link?.url,
-    });
-  } catch (error) {
-    console.error('Error creating BlogCard:', error);
-    throw error;
+  if (!blok.title) {
+    console.warn('BlogCard missing required title, using default');
+    blok.title = 'Untitled Blog Post';
   }
+
+  return BlogCard({
+    title: blok.title,
+    description: blok.description || '',
+    imageUrl: blok.image?.filename,
+    alt: blok.image?.alt || blok.title,
+    href: blok.link?.url || '#',
+    date: blok.date,
+    author: blok.author,
+    readTime: blok.read_time,
+  });
 }
 
 function renderButton(blok) {
-  console.log('Rendering button with props:', {
-    text: blok.text,
-    href: blok.link?.url,
-    target: blok.link?.target,
-    variant: blok.variant || 'primary',
-    size: blok.size,
-  });
-
-  // Map size values to valid Svarog sizes
-  let svarogSize = '';
-  if (blok.size) {
-    switch (blok.size) {
-      case 'small':
-        svarogSize = 'sm';
-        break;
-      case 'large':
-        svarogSize = 'lg';
-        break;
-      default:
-        svarogSize = blok.size; // Use as-is if already correct
-    }
-  }
-
+  // Validate required props
   if (!blok.text) {
     throw new Error('Button component requires text prop');
   }
 
-  try {
-    return Button({
-      text: blok.text, // Required prop
-      href: blok.link?.url,
-      variant: blok.variant || 'primary',
-      size: svarogSize,
-      onClick: blok.onClick,
-      className: blok.className,
-    });
-  } catch (error) {
-    console.error('Error creating Button:', error);
-    throw error;
-  }
+  // Map Storyblok sizes to Svarog sizes
+  const sizeMap = {
+    small: 'sm',
+    medium: '',
+    large: 'lg',
+  };
+
+  return Button({
+    text: blok.text,
+    variant: blok.variant || 'primary',
+    size: sizeMap[blok.size] || blok.size || '',
+    disabled: blok.disabled || false,
+    className: blok.className,
+    onClick: (e) => {
+      // Handle link navigation
+      if (blok.link?.url) {
+        if (blok.link.url.startsWith('http')) {
+          window.open(blok.link.url, blok.link.target || '_self');
+        } else {
+          e.preventDefault();
+          router.navigate(blok.link.url);
+        }
+      }
+      // Call custom onClick if provided
+      if (blok.onClick) {
+        blok.onClick(e);
+      }
+    },
+  });
 }
 
 function renderText(blok) {
-  console.log('Rendering text:', blok);
-
   const textElement = createElement('div', {
-    classes: 'richtext-content',
-    html: blok.text,
+    classes: ['richtext-content'],
+    html: blok.text || '',
     style: {
       lineHeight: '1.6',
       margin: '1rem 0',
@@ -323,45 +302,50 @@ function renderText(blok) {
 }
 
 function renderContactInfo(blok) {
-  console.log('Rendering contact info with props:', {
-    phone: blok.phone,
-    email: blok.email,
-    address: blok.address,
+  return ContactInfo({
+    phone: blok.phone || '',
+    email: blok.email || '',
+    address: blok.address || '',
+    showMap: blok.show_map || false,
   });
-
-  try {
-    return ContactInfo({
-      phone: blok.phone,
-      email: blok.email,
-      address: blok.address,
-    });
-  } catch (error) {
-    console.error('Error creating ContactInfo:', error);
-    throw error;
-  }
 }
 
 function renderForm(blok) {
-  console.log('Rendering form with props:', blok);
+  return Form({
+    title: blok.title || '',
+    fields: blok.fields || [],
+    submitText: blok.submit_text || 'Submit',
+    onSubmit: async (data) => {
+      console.log('Form submitted:', data);
 
-  try {
-    return Form({
-      title: blok.title,
-      onSubmit: (data) => {
-        console.log('Form submitted:', data);
-        // Handle form submission here
-      },
-    });
-  } catch (error) {
-    console.error('Error creating Form:', error);
-    throw error;
-  }
+      // Handle form submission
+      if (blok.endpoint) {
+        try {
+          const response = await fetch(blok.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+
+          if (!response.ok) {
+            throw new Error('Form submission failed');
+          }
+
+          alert(blok.success_message || 'Form submitted successfully!');
+        } catch (error) {
+          console.error('Form submission error:', error);
+          alert(
+            blok.error_message || 'Form submission failed. Please try again.'
+          );
+        }
+      }
+    },
+  });
 }
 
 export function renderStoryblokComponent(blok) {
   console.log('=== RENDERING COMPONENT ===');
   console.log('Component type:', blok.component);
-  console.log('Component data:', blok);
 
   const renderer = componentMap[blok.component];
 
@@ -384,54 +368,51 @@ export function renderStoryblokComponent(blok) {
 export function renderStoryblokComponents(bloks) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', bloks.length);
-  console.log(
-    'Component types:',
-    bloks.map((b) => b.component)
-  );
 
   const container = createElement('div', {
-    classes: 'storyblok-content',
-    style: {
-      width: '100%',
-    },
+    classes: ['storyblok-content'],
+    style: { width: '100%' },
   });
 
   bloks.forEach((blok, index) => {
-    console.log(
-      `\n--- Rendering component ${index + 1}/${bloks.length}: ${blok.component} ---`
-    );
     try {
       const component = renderStoryblokComponent(blok);
       container.appendChild(component.getElement());
-      console.log(
-        `✅ Component ${index + 1} (${blok.component}) rendered successfully`
-      );
+      console.log(`✅ Component ${index + 1} (${blok.component}) rendered`);
     } catch (error) {
       console.error(
         `❌ Error rendering component ${index + 1} (${blok.component}):`,
         error
       );
 
-      // Add error placeholder using correct createElement
-      const errorElement = createElement('div', {
-        classes: 'component-error',
-        style: {
-          padding: '1rem',
-          background: '#fee',
-          border: '1px solid red',
-          margin: '1rem 0',
-          borderRadius: '4px',
-        },
-        html: `
-          <strong>Error rendering ${blok.component}:</strong><br>
-          ${error.message}<br>
-          <details style="margin-top: 0.5rem;">
-            <summary>Component Data</summary>
-            <pre style="font-size: 0.8rem; overflow: auto;">${JSON.stringify(blok, null, 2)}</pre>
-          </details>
-        `,
-      });
-      container.appendChild(errorElement);
+      container.appendChild(
+        createElement('div', {
+          classes: ['component-error'],
+          style: {
+            padding: '1rem',
+            background: '#fee',
+            border: '1px solid red',
+            margin: '1rem 0',
+            borderRadius: '4px',
+          },
+          children: [
+            createElement('strong', {
+              text: `Error rendering ${blok.component}: `,
+            }),
+            createElement('span', { text: error.message }),
+            createElement('details', {
+              style: { marginTop: '0.5rem' },
+              children: [
+                createElement('summary', { text: 'Component Data' }),
+                createElement('pre', {
+                  style: { fontSize: '0.8rem', overflow: 'auto' },
+                  text: JSON.stringify(blok, null, 2),
+                }),
+              ],
+            }),
+          ],
+        })
+      );
     }
   });
 
@@ -439,4 +420,4 @@ export function renderStoryblokComponents(bloks) {
   return container;
 }
 
-console.log('✅ StoryblokComponent ready with correct Svarog UI API');
+console.log('✅ StoryblokComponent ready with Svarog UI');
