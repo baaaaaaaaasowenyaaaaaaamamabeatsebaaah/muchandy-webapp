@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Svarog UI Browser Test</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        padding: 20px;
+        margin: 0;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .status {
+        padding: 16px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        font-weight: bold;
+      }
+      .loading {
+        background: #e3f2fd;
+        color: #1976d2;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .section {
+        margin: 30px 0;
+        padding: 20px;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+      .button-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .theme-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .log {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 20px;
+      }
+      .log-entry {
+        margin: 2px 0;
+      }
+      h1 {
+        color: #333;
+        margin-top: 0;
+      }
+      h2 {
+        color: #555;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Svarog UI Browser Test</h1>
+      <div id="status" class="status loading">Loading packages...</div>
+
+      <div class="theme-buttons" id="theme-buttons" style="display: none">
+        <button onclick="switchTheme('default')">Default Theme</button>
+        <button onclick="switchTheme('muchandy')">Muchandy Theme</button>
+        <button onclick="switchTheme('cabalou')">Cabalou Theme</button>
+      </div>
+
+      <div id="content"></div>
+
+      <div class="log" id="log">
+        <div class="log-entry">Console output will appear here...</div>
+      </div>
+    </div>
+
+    <script type="module">
+      const status = document.getElementById('status');
+      const content = document.getElementById('content');
+      const logEl = document.getElementById('log');
+      const themeButtons = document.getElementById('theme-buttons');
+
+      // Override console.log to show in page
+      const originalLog = console.log;
+      console.log = (...args) => {
+        originalLog(...args);
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.textContent = args.join(' ');
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      };
+
+      let SvarogUI = null;
+
+      async function loadSvarog() {
+        try {
+          console.log('Loading Svarog UI packages...');
+
+          // Import the main package
+          SvarogUI = await import('./node_modules/svarog-ui/dist/index.js');
+          console.log('✅ Svarog UI loaded');
+
+          // Make switchTheme global
+          window.switchTheme = async (themeName) => {
+            console.log(`Switching to ${themeName} theme...`);
+            try {
+              await SvarogUI.loadTheme(themeName);
+              console.log(`✅ ${themeName} theme loaded`);
+              updateStatus(`Using ${themeName} theme`, 'success');
+            } catch (error) {
+              console.error(`Failed to load ${themeName} theme:`, error);
+              updateStatus(`Failed to load ${themeName} theme`, 'error');
+            }
+          };
+
+          // Load default theme
+          await SvarogUI.loadTheme('default');
+          console.log('✅ Default theme loaded');
+
+          updateStatus('Svarog UI loaded successfully!', 'success');
+          themeButtons.style.display = 'flex';
+
+          // Create test components
+          createTestComponents();
+        } catch (error) {
+          console.error('Failed to load Svarog UI:', error);
+          updateStatus(`Error: ${error.message}`, 'error');
+        }
+      }
+
+      function updateStatus(message, type) {
+        status.textContent = message;
+        status.className = `status ${type}`;
+      }
+
+      function createTestComponents() {
+        content.innerHTML = '';
+
+        // Button variants section
+        const buttonSection = document.createElement('div');
+        buttonSection.className = 'section';
+        buttonSection.innerHTML = '<h2>Button Variants</h2>';
+
+        const buttonGrid = document.createElement('div');
+        buttonGrid.className = 'button-grid';
+
+        const variants = [
+          { text: 'Default', variant: '' },
+          { text: 'Primary', variant: 'primary' },
+          { text: 'Secondary', variant: 'secondary' },
+          { text: 'Success', variant: 'success' },
+          { text: 'Danger', variant: 'danger' },
+          { text: 'Text', variant: 'text' },
+          { text: 'Outlined', variant: 'outlined' },
+          { text: '✓', variant: 'icon' },
+        ];
+
+        variants.forEach(({ text, variant }) => {
+          try {
+            const btn = SvarogUI.Button({
+              text,
+              variant,
+              onClick: () => {
+                console.log(`${variant || 'default'} button clicked`);
+                alert(`You clicked the ${variant || 'default'} button!`);
+              },
+            });
+            buttonGrid.appendChild(btn.getElement());
+          } catch (error) {
+            console.error(`Failed to create ${variant} button:`, error.message);
+          }
+        });
+
+        buttonSection.appendChild(buttonGrid);
+        content.appendChild(buttonSection);
+
+        // Card section
+        const cardSection = document.createElement('div');
+        cardSection.className = 'section';
+        cardSection.innerHTML = '<h2>Card Component</h2>';
+
+        try {
+          const card = SvarogUI.Card({
+            title: 'Svarog UI Test Card',
+            description:
+              'This card is rendered using the published Svarog UI packages.',
+            imageUrl:
+              'https://via.placeholder.com/300x200/FF6B35/FFFFFF?text=Svarog+UI',
+            alt: 'Svarog UI',
+          });
+          cardSection.appendChild(card.getElement());
+        } catch (error) {
+          console.error('Failed to create card:', error.message);
+        }
+
+        content.appendChild(cardSection);
+
+        // Form section
+        const formSection = document.createElement('div');
+        formSection.className = 'section';
+        formSection.innerHTML = '<h2>Form Components</h2>';
+
+        try {
+          const input = SvarogUI.Input({
+            label: 'Name',
+            placeholder: 'Enter your name',
+            onChange: (value) => console.log('Input value:', value),
+          });
+          formSection.appendChild(input.getElement());
+
+          const select = SvarogUI.Select({
+            label: 'Choose Theme',
+            options: [
+              { value: 'default', label: 'Default Theme' },
+              { value: 'muchandy', label: 'Muchandy Theme' },
+              { value: 'cabalou', label: 'Cabalou Theme' },
+            ],
+            onChange: (value) => {
+              console.log('Selected:', value);
+              window.switchTheme(value);
+            },
+          });
+          formSection.appendChild(select.getElement());
+        } catch (error) {
+          console.error('Failed to create form components:', error.message);
+        }
+
+        content.appendChild(formSection);
+
+        // Interactive button
+        const interactiveSection = document.createElement('div');
+        interactiveSection.className = 'section';
+        interactiveSection.innerHTML = '<h2>Interactive Example</h2>';
+
+        try {
+          let count = 0;
+          const counterBtn = SvarogUI.Button({
+            text: `Clicks: ${count}`,
+            variant: 'outlined',
+            size: 'lg',
+            onClick: function () {
+              count++;
+              this.setText(`Clicks: ${count}`);
+              console.log(`Button clicked ${count} times`);
+            },
+          });
+          interactiveSection.appendChild(counterBtn.getElement());
+        } catch (error) {
+          console.error('Failed to create interactive button:', error.message);
+        }
+
+        content.appendChild(interactiveSection);
+
+        console.log('✅ All test components created');
+      }
+
+      // Start loading
+      loadSvarog();
+    </script>
+  </body>
+</html>

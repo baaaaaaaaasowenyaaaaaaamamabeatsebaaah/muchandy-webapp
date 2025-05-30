@@ -7,6 +7,8 @@ import {
   createElement,
 } from 'svarog-ui-core';
 
+import { router } from '../utils/router.js';
+
 console.log('=== STORYBLOK COMPONENT.JS LOADING ===');
 
 const componentMap = {
