@@ -30,8 +30,8 @@
   "author": "Sebastian Huber",
   "license": "MIT",
   "dependencies": {
-    "svarog-ui-core": "^2.7.0",
-    "@svarog-ui/theme-muchandy": "^1.9.0",
+    "svarog-ui-core": "^2.7.1",
+    "@svarog-ui/theme-muchandy": "^1.9.1",
     "storyblok-js-client": "^6.0.0"
   },
   "devDependencies": {
