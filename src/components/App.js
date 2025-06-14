@@ -1,6 +1,10 @@
-import { createElement } from 'svarog-ui-core';
+// src/components/App.js
+import { createElement, CollapsibleHeader, Footer } from 'svarog-ui-core';
 import { router } from '../utils/router.js';
 import createPage from './Page.js';
+
+console.log(CollapsibleHeader);
+console.log(Footer);
 
 console.log('=== APP.JS LOADING ===');
 
@@ -11,6 +15,8 @@ const createApp = () => {
   let currentPage = null;
   let pageContainer = null;
   let themeLoaded = false;
+  let header = null;
+  let footer = null;
 
   // Force load and apply Muchandy theme
   const initTheme = async () => {
@@ -163,6 +169,69 @@ const createApp = () => {
     }
   };
 
+  const createHeader = () => {
+    console.log('Creating header...');
+
+    // Create header with Muchandy branding
+    header = CollapsibleHeader({
+      siteName: 'MUCHANDY',
+      navigation: {
+        items: [
+          { id: 'repair', label: 'Reparatur', href: '/reparatur' },
+          { id: 'purchase', label: 'Ankauf', href: '/ankauf' },
+          { id: 'used', label: 'Gebrauchte', href: '/gebrauchte' },
+          { id: 'services', label: 'Services', href: '/services' },
+          { id: 'find-us', label: 'So Finden Sie Uns', href: '/kontakt' },
+        ],
+      },
+      contactInfo: {
+        location: 'Sendlinger Str. 7',
+        phone: '089 / 26949777',
+        email: 'info@muchandy.de',
+      },
+      collapseThreshold: 100,
+      callButtonText: 'Jetzt Anrufen',
+      onCallClick: () => {
+        window.location.href = 'tel:08926949777';
+      },
+      logo: 'https://img2.storyblok.com//176x60/filters:quality(90)/f/177369/2000x685/cd088b1e56/logo-farbe.png',
+      compactLogo:
+        'https://img2.storyblok.com//60x60/filters:quality(90)/f/177369/354x354/e08df44c66/logo-icon-farbe.png',
+      showStickyIcons: true,
+      stickyIconsPosition: 'right',
+    });
+
+    return header.getElement();
+  };
+
+  const createFooter = () => {
+    console.log('Creating footer...');
+
+    // Create footer with Muchandy info
+    footer = Footer({
+      siteName: 'MUCHANDY',
+      footer: {
+        copyright: `© ${new Date().getFullYear()} Muchandy. Alle Rechte vorbehalten.`,
+        links: [
+          { label: 'Impressum', href: '/impressum' },
+          { label: 'Datenschutz', href: '/datenschutz' },
+          { label: 'AGB', href: '/agb' },
+          { label: 'Widerrufsbelehrung', href: '/widerruf' },
+          { label: 'Garantie', href: '/garantie' },
+          { label: 'FAQ', href: '/faq' },
+        ],
+        social: [
+          { platform: 'Facebook', href: 'https://facebook.com/muchandy' },
+          { platform: 'Instagram', href: 'https://instagram.com/muchandy' },
+          { platform: 'Google', href: 'https://g.page/muchandy' },
+        ],
+      },
+      className: 'muchandy-footer',
+    });
+
+    return footer.getElement();
+  };
+
   const render = async () => {
     console.log('Rendering app element...');
 
@@ -172,6 +241,24 @@ const createApp = () => {
     // Create app container
     element = createElement('div', {
       classes: ['app'],
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+      },
+    });
+
+    // Create and add header
+    const headerElement = createHeader();
+    element.appendChild(headerElement);
+
+    // Create main content wrapper
+    const mainWrapper = createElement('main', {
+      classes: ['app-main'],
+      style: {
+        flex: '1',
+        paddingTop: '0', // Header is sticky, no need for padding
+      },
     });
 
     // Create content container
@@ -179,7 +266,13 @@ const createApp = () => {
       classes: ['app-content'],
     });
 
-    element.appendChild(pageContainer);
+    mainWrapper.appendChild(pageContainer);
+    element.appendChild(mainWrapper);
+
+    // Create and add footer
+    const footerElement = createFooter();
+    element.appendChild(footerElement);
+
     return element;
   };
 
@@ -209,6 +302,8 @@ const createApp = () => {
     destroy() {
       console.log('Destroying app...');
       if (currentPage) currentPage.destroy();
+      if (header) header.destroy();
+      if (footer) footer.destroy();
       element?.remove();
       element = null;
       pageContainer = null;
