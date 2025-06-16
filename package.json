@@ -14,11 +14,17 @@
     "db:reset": "npx prisma migrate reset --force",
     "crawl": "node -e \"import('./src/services/simpleCrawler.js').then(({crawlPrices}) => crawlPrices())\"",
     "crawl:test": "node -e \"import('./src/services/simpleCrawler.js').then(({crawlPrices}) => crawlPrices()).catch(console.error)\"",
-    "setup": "npm install && npm run db:setup && npm run crawl",
-    "fresh": "npm run db:reset && npm run crawl && npm run dev",
     "lint": "eslint src --ext .js --fix",
     "format": "prettier --write src/**/*.{js,css,html}",
-    "validate": "npm run lint && npm run format"
+    "validate": "npm run lint && npm run format",
+    "validate:env": "node scripts/validate-content.js",
+    "dev:content": "npm run validate:env && npm run dev",
+    "build:check": "npm run validate && npm run validate:env && npm run build",
+    "setup": "npm install && npm run db:setup",
+    "fresh": "npm run db:reset && npm run dev",
+    "fresh:setup": "npm install && npm run db:setup && npm run validate:env",
+    "start:prod": "NODE_ENV=production npm start",
+    "clean": "rm -rf dist/ node_modules/.cache .storyblok-cache"
   },
   "keywords": [
     "muchandy",
@@ -31,12 +37,12 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.9.0",
-    "@svarog-ui/theme-muchandy": "^1.9.2",
+    "@svarog-ui/theme-muchandy": "^1.9.4",
     "express": "^5.1.0",
     "prisma": "^6.9.0",
     "puppeteer": "^24.10.1",
     "storyblok-js-client": "^6.0.0",
-    "svarog-ui-core": "^2.7.6"
+    "svarog-ui-core": "^2.7.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

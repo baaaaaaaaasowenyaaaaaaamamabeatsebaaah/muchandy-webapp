@@ -1,4 +1,6 @@
 /* Global styles for Muchandy webapp */
+@import './svgLogos.css';
+
 * {
   box-sizing: border-box;
 }

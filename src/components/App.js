@@ -1,12 +1,9 @@
-// src/components/App.js
+// src/components/App.js - Simple working version (no URL processing)
 import { createElement, CollapsibleHeader, Footer } from 'svarog-ui-core';
 import { router } from '../utils/router.js';
 import createPage from './Page.js';
 
-console.log(CollapsibleHeader);
-console.log(Footer);
-
-console.log('=== APP.JS LOADING ===');
+console.log('=== APP.JS LOADING (Simple Working Version) ===');
 
 const createApp = () => {
   console.log('Creating app instance...');
@@ -169,12 +166,33 @@ const createApp = () => {
     }
   };
 
-  const createHeader = () => {
-    console.log('Creating header...');
+  // Get working logo URLs - no processing, just use what works - KISS principle
+  const getWorkingLogoUrls = () => {
+    // Your EXACT working URLs - don't modify them at all
+    const workingUrls = {
+      main: 'https://a.storyblok.com/f/340558/150x150/568478fef6/logo-farbe.svg?cv=1750094529899',
+      compact:
+        'https://a.storyblok.com/f/340558/150x150/fe8d57c0c5/logo-icon-farbe.svg?cv=1750094529797',
+    };
 
-    // Create header with Muchandy branding
+    console.log('✅ Using verified working logo URLs:', workingUrls);
+    return workingUrls;
+  };
+
+  const createHeader = () => {
+    console.log('Creating header with verified working URLs...');
+
+    // Get the exact working URLs without any processing
+    const logoUrls = getWorkingLogoUrls();
+
+    // Create header with unmodified URLs - Maximum Conciseness
     header = CollapsibleHeader({
       siteName: 'MUCHANDY',
+
+      // Use exact working URLs - no processing, no modification
+      logo: logoUrls.main,
+      compactLogo: logoUrls.compact,
+
       navigation: {
         items: [
           { id: 'repair', label: 'Reparatur', href: '/reparatur' },
@@ -194,20 +212,17 @@ const createApp = () => {
       onCallClick: () => {
         window.location.href = 'tel:08926949777';
       },
-      logo: 'https://img2.storyblok.com//176x60/filters:quality(90)/f/177369/2000x685/cd088b1e56/logo-farbe.png',
-      compactLogo:
-        'https://img2.storyblok.com//60x60/filters:quality(90)/f/177369/354x354/e08df44c66/logo-icon-farbe.png',
       showStickyIcons: true,
       stickyIconsPosition: 'right',
     });
 
+    console.log('✅ Header created with working SVG logos');
     return header.getElement();
   };
 
   const createFooter = () => {
     console.log('Creating footer...');
 
-    // Create footer with Muchandy info
     footer = Footer({
       siteName: 'MUCHANDY',
       footer: {
@@ -279,15 +294,17 @@ const createApp = () => {
   const init = async () => {
     console.log('Initializing app...');
 
-    // Setup router
+    // First render the app (creates pageContainer)
+    await render();
+
+    // Then setup router with routes
+    console.log('Setting up router...');
     router.addRoute('/', handleRoute);
     router.addRoute('*', handleRoute);
 
-    // Render app (which includes theme loading)
-    await render();
-
-    // Handle initial route
-    router.handleRoute();
+    // Finally start routing
+    console.log('Starting router...');
+    router.start();
 
     return element;
   };
@@ -299,6 +316,20 @@ const createApp = () => {
       }
       return element;
     },
+
+    // Helper to test URLs - Development aid
+    testLogos: () => {
+      const urls = getWorkingLogoUrls();
+      Object.entries(urls).forEach(([key, url]) => {
+        fetch(url, { method: 'HEAD' })
+          .then((r) =>
+            console.log(`${key}: ${r.ok ? '✅' : '❌'} (${r.status}) ${url}`)
+          )
+          .catch((e) => console.log(`${key}: ❌ Error ${url}`, e));
+      });
+      return urls;
+    },
+
     destroy() {
       console.log('Destroying app...');
       if (currentPage) currentPage.destroy();

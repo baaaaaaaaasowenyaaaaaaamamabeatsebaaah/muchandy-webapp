@@ -5,3 +5,28 @@ coverage/
 .idea/
 package-lock.json
 .env
+# Content & Cache
+.storyblok-cache/
+storyblok-export/
+temp-content/
+
+# Environment
+.env.local
+.env.production
+
+# Development artifacts
+debug.log
+*.local.log
+coverage/
+.nyc_output/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Content backups
+content-backup-*/
+storyblok-backup-*/

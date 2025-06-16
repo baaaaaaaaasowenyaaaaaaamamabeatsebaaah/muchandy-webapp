@@ -1,0 +1,158 @@
+/* src/styles/svgLogos.css - SVG Logo Styles */
+
+/* Main logo styles - ensures proper SVG rendering */
+.muchandy-main-logo {
+  display: block;
+  height: 60px;
+  width: auto;
+  max-width: 200px;
+}
+
+.muchandy-main-logo svg {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+/* Compact logo styles - square format for mobile */
+.muchandy-compact-logo {
+  display: block;
+  height: 40px;
+  width: 40px;
+  min-width: 40px;
+}
+
+.muchandy-compact-logo svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+/* SVG container styles - for inline SVG content */
+.logo-svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-svg svg {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  /* Ensure SVG inherits current color if needed */
+  fill: currentColor;
+}
+
+/* Image logo fallback styles */
+.logo-image {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* Text logo fallback styles */
+.logo-text {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--color-brand-primary, #ff7f50);
+  white-space: nowrap;
+}
+
+/* Responsive logo behavior */
+@media (max-width: 768px) {
+  .muchandy-main-logo {
+    height: 50px;
+    max-width: 150px;
+  }
+
+  .muchandy-compact-logo {
+    height: 35px;
+    width: 35px;
+    min-width: 35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .muchandy-main-logo {
+    height: 40px;
+    max-width: 120px;
+  }
+
+  .muchandy-compact-logo {
+    height: 30px;
+    width: 30px;
+    min-width: 30px;
+  }
+}
+
+/* Loading state for async SVG logos */
+.logo-loading {
+  background: #f0f0f0;
+  border-radius: 4px;
+  animation: logo-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes logo-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Error state for failed logo loads */
+.logo-error {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fee;
+  color: #c00;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Dark mode support for SVG logos */
+@media (prefers-color-scheme: dark) {
+  .logo-svg svg {
+    /* Invert colors for dark mode if needed */
+    filter: brightness(0.9);
+  }
+
+  .logo-text {
+    color: var(--color-brand-primary-light, #ffa07a);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .logo-svg svg {
+    filter: contrast(1.2);
+  }
+
+  .logo-image {
+    filter: contrast(1.1);
+  }
+}
+
+/* Print styles - ensure logos print well */
+@media print {
+  .muchandy-main-logo,
+  .muchandy-compact-logo {
+    filter: grayscale(100%);
+    -webkit-filter: grayscale(100%);
+  }
+
+  .logo-svg svg {
+    fill: #000 !important;
+  }
+}

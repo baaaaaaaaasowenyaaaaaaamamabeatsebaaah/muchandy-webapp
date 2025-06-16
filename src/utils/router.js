@@ -1,3 +1,4 @@
+// src/utils/router.js - Fixed router without race conditions
 console.log('=== ROUTER.JS LOADING ===');
 
 class Router {
@@ -5,18 +6,18 @@ class Router {
     console.log('Creating router instance...');
     this.routes = new Map();
     this.currentPath = '';
+    this.initialized = false;
 
-    console.log('Adding event listeners...');
+    // Only listen for popstate (back/forward buttons)
+    // Let the app control initial routing
     window.addEventListener('popstate', () => {
       console.log('Popstate event fired');
-      this.handleRoute();
-    });
-    window.addEventListener('DOMContentLoaded', () => {
-      console.log('DOMContentLoaded event fired');
-      this.handleRoute();
+      if (this.initialized) {
+        this.handleRoute();
+      }
     });
 
-    console.log('✅ Router initialized');
+    console.log('✅ Router initialized (waiting for app to start routing)');
   }
 
   addRoute(path, handler) {
@@ -28,6 +29,13 @@ class Router {
     console.log(`Navigating to: ${path}`);
     window.history.pushState({}, '', path);
     this.handleRoute();
+  }
+
+  // New method: start routing (called by app when ready)
+  start() {
+    console.log('Router starting...');
+    this.initialized = true;
+    this.handleRoute(); // Handle current route
   }
 
   handleRoute() {
@@ -49,6 +57,11 @@ class Router {
       }
     } else {
       console.error(`❌ No route handler found for ${path}`);
+      console.log('Router state:', {
+        initialized: this.initialized,
+        routeCount: this.routes.size,
+        currentPath: this.currentPath,
+      });
     }
   }
 
