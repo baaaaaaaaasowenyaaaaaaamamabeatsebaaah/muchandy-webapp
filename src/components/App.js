@@ -1,12 +1,12 @@
-// src/components/App.js - Simple working version (no URL processing)
+// src/components/App.js - Enhanced version with Svarog-UI Page integration
 import { createElement, CollapsibleHeader, Footer } from 'svarog-ui-core';
 import { router } from '../utils/router.js';
 import createPage from './Page.js';
 
-console.log('=== APP.JS LOADING (Simple Working Version) ===');
+console.log('=== APP.JS LOADING (Enhanced Page Integration) ===');
 
 const createApp = () => {
-  console.log('Creating app instance...');
+  console.log('Creating enhanced app instance...');
 
   let element = null;
   let currentPage = null;
@@ -59,8 +59,6 @@ const createApp = () => {
         console.log('Theme verification:');
         console.log('  --button-bg:', buttonBg || 'NOT FOUND');
         console.log('  --color-brand-primary:', brandPrimary || 'NOT FOUND');
-
-        // Check if theme classes were applied
         console.log(
           '  Theme classes on html:',
           document.documentElement.className
@@ -114,8 +112,8 @@ const createApp = () => {
       currentPage.destroy();
     }
 
-    // Create new page
-    console.log('Creating new page...');
+    // Create new enhanced page
+    console.log('Creating new enhanced page...');
     currentPage = createPage();
 
     // Determine story slug from path
@@ -123,46 +121,46 @@ const createApp = () => {
     console.log(`Loading story with slug: ${slug}`);
 
     try {
+      // Load story with enhanced page component
       await currentPage.loadStory(slug);
       const pageElement = currentPage.getElement();
 
+      // Clear container and add new page
       pageContainer.innerHTML = '';
       pageContainer.appendChild(pageElement);
-      console.log('✅ Page rendered successfully');
-    } catch (error) {
-      console.error('❌ Route handling error:', error);
 
-      const errorElement = createElement('div', {
-        classes: ['error-container'],
-        style: {
-          padding: '2rem',
-          color: '#dc3545',
-          border: '1px solid #dc3545',
-          margin: '1rem',
-          borderRadius: '4px',
-          background: '#f8d7da',
-        },
-        children: [
-          createElement('h2', { text: 'Error Loading Content' }),
-          createElement('p', {
-            html: `<strong>Error:</strong> ${error.message}`,
-          }),
-          createElement('p', { html: `<strong>Path:</strong> ${path}` }),
-          createElement('p', { html: `<strong>Slug:</strong> ${slug}` }),
-          createElement('details', {
-            children: [
-              createElement('summary', { text: 'Stack Trace' }),
-              createElement('pre', {
-                text: error.stack,
-                style: { fontSize: '0.8rem', overflow: 'auto' },
-              }),
-            ],
-          }),
-        ],
+      // Log enhanced page state
+      const pageState = currentPage.getState();
+      console.log('✅ Enhanced page rendered successfully');
+      console.log('Page state:', pageState);
+
+      // Validate accessibility if in development
+      if (import.meta.env.DEV) {
+        const a11yReport = currentPage.validateAccessibility();
+        if (!a11yReport.valid) {
+          console.warn('Accessibility issues found:', a11yReport.issues);
+        } else {
+          console.log('✅ Page accessibility validated');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Enhanced route handling error:', error);
+
+      // Create error page using Svarog Page component
+      const errorPage = createPage();
+      errorPage.setError({
+        title: 'Seite nicht gefunden',
+        message:
+          'Die angeforderte Seite konnte nicht geladen werden. Bitte überprüfen Sie die URL oder kehren Sie zur Startseite zurück.',
+        code: error.status || 404,
       });
 
+      const errorElement = errorPage.getElement();
       pageContainer.innerHTML = '';
       pageContainer.appendChild(errorElement);
+
+      // Update currentPage reference
+      currentPage = errorPage;
     }
   };
 
@@ -248,7 +246,7 @@ const createApp = () => {
   };
 
   const render = async () => {
-    console.log('Rendering app element...');
+    console.log('Rendering enhanced app element...');
 
     // Initialize theme first
     await initTheme();
@@ -276,9 +274,13 @@ const createApp = () => {
       },
     });
 
-    // Create content container
+    // Create content container for enhanced pages
     pageContainer = createElement('div', {
       classes: ['app-content'],
+      style: {
+        width: '100%',
+        minHeight: '50vh', // Ensure minimum height for loading states
+      },
     });
 
     mainWrapper.appendChild(pageContainer);
@@ -292,18 +294,18 @@ const createApp = () => {
   };
 
   const init = async () => {
-    console.log('Initializing app...');
+    console.log('Initializing enhanced app...');
 
     // First render the app (creates pageContainer)
     await render();
 
     // Then setup router with routes
-    console.log('Setting up router...');
+    console.log('Setting up enhanced router...');
     router.addRoute('/', handleRoute);
     router.addRoute('*', handleRoute);
 
     // Finally start routing
-    console.log('Starting router...');
+    console.log('Starting enhanced router...');
     router.start();
 
     return element;
@@ -315,6 +317,33 @@ const createApp = () => {
         await init();
       }
       return element;
+    },
+
+    // Get current page instance (enhanced)
+    getCurrentPage() {
+      return currentPage;
+    },
+
+    // Navigate programmatically
+    async navigate(path) {
+      console.log(`App navigate to: ${path}`);
+      router.navigate(path);
+    },
+
+    // Update current page
+    updatePage(props) {
+      if (currentPage) {
+        currentPage.update(props);
+      }
+    },
+
+    // Get app state
+    getState() {
+      return {
+        currentPath: router.getCurrentPath(),
+        pageState: currentPage ? currentPage.getState() : null,
+        themeLoaded,
+      };
     },
 
     // Helper to test URLs - Development aid
@@ -330,14 +359,32 @@ const createApp = () => {
       return urls;
     },
 
+    // Enhanced destroy with proper cleanup
     destroy() {
-      console.log('Destroying app...');
-      if (currentPage) currentPage.destroy();
-      if (header) header.destroy();
-      if (footer) footer.destroy();
+      console.log('Destroying enhanced app...');
+
+      // Destroy current page
+      if (currentPage) {
+        currentPage.destroy();
+        currentPage = null;
+      }
+
+      // Destroy header and footer
+      if (header) {
+        header.destroy();
+        header = null;
+      }
+      if (footer) {
+        footer.destroy();
+        footer = null;
+      }
+
+      // Remove element
       element?.remove();
       element = null;
       pageContainer = null;
+
+      console.log('✅ Enhanced app destroyed');
     },
   };
 };

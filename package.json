@@ -42,7 +42,7 @@
     "prisma": "^6.9.0",
     "puppeteer": "^24.10.1",
     "storyblok-js-client": "^6.0.0",
-    "svarog-ui-core": "^2.7.7"
+    "svarog-ui-core": "^2.7.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
