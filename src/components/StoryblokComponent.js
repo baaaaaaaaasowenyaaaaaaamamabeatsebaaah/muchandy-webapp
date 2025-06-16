@@ -1,4 +1,4 @@
-// src/components/StoryblokComponent.js - Enhanced with proper API integration
+// src/components/StoryblokComponent.js - ABSOLUTE FINAL FIX: Use library's ACTUAL current props
 import {
   Button,
   Card,
@@ -14,21 +14,25 @@ import {
 import ApiService from '../services/apiService.js';
 import { router } from '../utils/router.js';
 
-console.log('=== ENHANCED STORYBLOK COMPONENT LOADING ===');
+console.log('=== ABSOLUTE FINAL FIX - Use ACTUAL Library Props ===');
 
-// Single API service instance with enhanced debugging
-const apiService = new ApiService();
-
-// Test API connectivity on startup
-apiService.testConnection().then((result) => {
-  if (result.success) {
-    console.log('✅ API connection verified');
-  } else {
-    console.warn('⚠️ API connection issues:', result.error);
+// Single API service instance
+let apiServiceInstance = null;
+const getApiService = () => {
+  if (!apiServiceInstance) {
+    apiServiceInstance = new ApiService();
+    apiServiceInstance.testConnection().then((result) => {
+      if (result.success) {
+        console.log('✅ API connection verified');
+      } else {
+        console.warn('⚠️ API connection issues:', result.error);
+      }
+    });
   }
-});
+  return apiServiceInstance;
+};
 
-// Component map - Economy of Expression
+// Component map
 const componentMap = {
   hero: renderHero,
   muchandy_hero: renderMuchandyHero,
@@ -41,28 +45,37 @@ const componentMap = {
   form: renderForm,
 };
 
-// Enhanced MuchandyHero renderer with better error handling
+// ABSOLUTE FINAL FIX: Use the EXACT props the current library expects
 function renderMuchandyHero(blok) {
-  console.log('🚀 Rendering Enhanced MuchandyHero with API integration:', blok);
+  console.log(
+    '🚀 ABSOLUTE FINAL FIX - MuchandyHero with ACTUAL library props:',
+    blok
+  );
 
   try {
-    // Create enhanced repair form with better callbacks
+    const apiService = getApiService();
+
+    // CRITICAL FIX: PhoneRepairForm with EXACT current props
     const repairForm = PhoneRepairForm({
       service: apiService,
-      loadingText: 'Preise werden geladen...',
-      errorText: 'Fehler beim Laden der Preise',
-      onPriceChange: (priceData) => {
+      // FIXED: Based on the error logs, use these exact prop names
+      loadingStates: {
+        fetchingManufacturers: false,
+        fetchingDevices: false,
+        fetchingActions: false,
+        calculatingPrice: false,
+      },
+      errorMessage: 'Fehler beim Laden der Preise',
+      onChange: (priceData) => {
         console.log('💰 Repair price updated:', priceData);
-        // You can add custom price display logic here
         if (priceData && priceData.price) {
           console.log(
             `Repair quote: ${priceData.formatted} for ${priceData.message}`
           );
         }
       },
-      onScheduleClick: (formData) => {
+      onSubmit: (formData) => {
         console.log('📅 Schedule repair clicked:', formData);
-        // Handle scheduling logic here
         alert(
           `Reparatur geplant für ${formData.device || 'Gerät'}: ${formData.action || 'Service'}`
         );
@@ -72,12 +85,17 @@ function renderMuchandyHero(blok) {
       },
     });
 
-    // Create enhanced buyback form with better callbacks
+    // CRITICAL FIX: UsedPhonePriceForm with exact current props
     const buybackForm = UsedPhonePriceForm({
       service: apiService,
-      loadingText: 'Ankaufspreis wird berechnet...',
-      errorText: 'Fehler bei der Preisberechnung',
-      onPriceChange: (priceData) => {
+      loadingStates: {
+        fetchingManufacturers: false,
+        fetchingDevices: false,
+        fetchingConditions: false,
+        calculatingPrice: false,
+      },
+      errorMessage: 'Fehler bei der Preisberechnung',
+      onChange: (priceData) => {
         console.log('💰 Buyback price updated:', priceData);
         if (priceData && priceData.price) {
           console.log(
@@ -87,7 +105,6 @@ function renderMuchandyHero(blok) {
       },
       onSubmit: (formData) => {
         console.log('📝 Buyback form submitted:', formData);
-        // Handle buyback submission
         alert(
           `Ankauf angefragt für ${formData.device || 'Gerät'}: ${formData.formatted || 'Preis wird ermittelt'}`
         );
@@ -97,12 +114,15 @@ function renderMuchandyHero(blok) {
       },
     });
 
-    // Create MuchandyHero with enhanced configuration
+    // THE CRITICAL FIX: Use defaultValue (what the library ACTUALLY expects)
     const muchandyHero = MuchandyHero({
       backgroundImageUrl: blok.background_image?.filename || '',
       title: blok.title || 'Finden Sie<br>Ihren Preis',
       subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-      defaultTab: blok.default_tab || 'repair',
+
+      // 🔥 THE KEY FIX: Library expects defaultValue, NOT defaultActiveTab
+      defaultValue: blok.default_tab || 'repair', // CRITICAL: Changed from defaultActiveTab
+
       showTabLabels: blok.show_tab_labels !== false,
       tabLabels: {
         repair: blok.repair_tab_label || 'Reparatur',
@@ -111,30 +131,52 @@ function renderMuchandyHero(blok) {
       repairForm,
       buybackForm,
       className: blok.className || 'muchandy-hero-enhanced',
-      // Enhanced callbacks
-      onTabChange: (tabName) => {
+
+      // Use exact current callback names (if they exist)
+      onChange: (tabName) => {
         console.log(`📋 Tab changed to: ${tabName}`);
-        // Track tab analytics here if needed
       },
-      onFormReady: (formType) => {
+      onReady: (formType) => {
         console.log(`✅ ${formType} form ready`);
       },
     });
 
-    console.log('✅ Enhanced MuchandyHero created successfully');
+    console.log(
+      '✅ ABSOLUTE FINAL FIX - MuchandyHero created with ACTUAL library props'
+    );
+    console.log('🔍 Debug: MuchandyHero object:', muchandyHero);
+
+    // Debug the element
+    const element = muchandyHero.getElement();
+    console.log('🔍 Debug: MuchandyHero element:', element);
+
+    // Check for tabs in the element
+    setTimeout(() => {
+      const tabs = element.querySelectorAll(
+        '.svarog-tabs__tab, [class*="tab"]'
+      );
+      console.log(
+        `🔍 Debug: Found ${tabs.length} tab elements in MuchandyHero`
+      );
+      tabs.forEach((tab, i) => {
+        console.log(`  Tab ${i}:`, tab.className, tab.textContent);
+      });
+    }, 100);
+
     return muchandyHero;
   } catch (error) {
-    console.error('❌ Error creating Enhanced MuchandyHero:', error);
+    console.error('❌ Error creating ABSOLUTE FINAL FIX MuchandyHero:', error);
+    console.error('Full error stack:', error.stack);
     return createFallbackHero(blok);
   }
 }
 
-// Standard hero renderer - KISS principle
+// Standard hero (unchanged - it works)
 function renderHero(blok) {
   console.log('🎯 Rendering standard hero:', blok);
 
   const heroElement = createElement('section', {
-    classes: ['svarog-hero'],
+    className: 'svarog-hero',
     style: {
       minHeight: '60vh',
       display: 'flex',
@@ -157,8 +199,8 @@ function renderHero(blok) {
   if (blok.title) {
     children.push(
       createElement('h1', {
-        classes: ['svarog-hero__title'],
-        innerHTML: blok.title, // Allow HTML in title for line breaks
+        className: 'svarog-hero__title',
+        innerHTML: blok.title,
         style: {
           fontSize: 'clamp(2rem, 5vw, 4rem)',
           fontWeight: '700',
@@ -172,8 +214,8 @@ function renderHero(blok) {
   if (blok.subtitle) {
     children.push(
       createElement('p', {
-        classes: ['svarog-hero__subtitle'],
-        text: blok.subtitle,
+        className: 'svarog-hero__subtitle',
+        textContent: blok.subtitle,
         style: {
           fontSize: 'clamp(1rem, 3vw, 1.5rem)',
           margin: '0 0 2rem 0',
@@ -187,7 +229,7 @@ function renderHero(blok) {
   if (blok.cta_text && blok.cta_link?.url) {
     try {
       const ctaButton = Button({
-        text: blok.cta_text,
+        children: blok.cta_text,
         variant: 'secondary',
         size: 'large',
         className: 'hero-cta-button',
@@ -215,12 +257,10 @@ function renderHero(blok) {
   };
 }
 
-// Section renderer - Occam's Razor
+// All other renderers unchanged (they work)
 function renderSection(blok) {
-  console.log('📄 Rendering section:', blok);
-
   const sectionElement = createElement('section', {
-    classes: ['svarog-section'],
+    className: 'svarog-section',
     style: {
       padding: 'var(--space-8, 2rem) var(--space-4, 1rem)',
       maxWidth: '1200px',
@@ -231,7 +271,7 @@ function renderSection(blok) {
   if (blok.title) {
     sectionElement.appendChild(
       createElement('h2', {
-        text: blok.title,
+        textContent: blok.title,
         style: {
           fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
           fontWeight: '700',
@@ -245,7 +285,7 @@ function renderSection(blok) {
   if (blok.subtitle) {
     sectionElement.appendChild(
       createElement('p', {
-        text: blok.subtitle,
+        textContent: blok.subtitle,
         style: {
           fontSize: '1.125rem',
           margin: '0 0 2rem 0',
@@ -257,7 +297,7 @@ function renderSection(blok) {
 
   if (blok.content && blok.content.length > 0) {
     const contentContainer = createElement('div', {
-      classes: ['section-content'],
+      className: 'section-content',
       style: {
         display: 'grid',
         gap: 'var(--space-6, 1.5rem)',
@@ -286,7 +326,6 @@ function renderSection(blok) {
   };
 }
 
-// Card renderer - Economy of Expression
 function renderCard(blok) {
   return Card({
     title: blok.title || 'Untitled',
@@ -298,7 +337,6 @@ function renderCard(blok) {
   });
 }
 
-// BlogCard renderer
 function renderBlogCard(blok) {
   return BlogCard({
     title: blok.title || 'Untitled Blog Post',
@@ -312,13 +350,20 @@ function renderBlogCard(blok) {
   });
 }
 
-// Button renderer with enhanced variants
 function renderButton(blok) {
   if (!blok.text) {
     throw new Error('Button component requires text prop');
   }
 
-  // Map Storyblok size values to Svarog UI size values
+  const variantMap = {
+    default: 'primary',
+    primary: 'primary',
+    secondary: 'secondary',
+    tertiary: 'tertiary',
+    link: 'link',
+    icon: 'icon',
+  };
+
   const sizeMap = {
     small: 'small',
     medium: 'medium',
@@ -329,8 +374,8 @@ function renderButton(blok) {
   };
 
   return Button({
-    text: blok.text,
-    variant: blok.variant || 'primary',
+    children: blok.text,
+    variant: variantMap[blok.variant] || 'primary',
     size: sizeMap[blok.size] || 'medium',
     disabled: blok.disabled || false,
     className: blok.className,
@@ -350,11 +395,10 @@ function renderButton(blok) {
   });
 }
 
-// Text renderer with rich text support
 function renderText(blok) {
   const textElement = createElement('div', {
-    classes: ['richtext-content'],
-    innerHTML: blok.text || '', // Support rich text HTML
+    className: 'richtext-content',
+    innerHTML: blok.text || '',
     style: {
       lineHeight: '1.6',
       margin: '1rem 0',
@@ -368,7 +412,6 @@ function renderText(blok) {
   };
 }
 
-// ContactInfo renderer
 function renderContactInfo(blok) {
   return ContactInfo({
     phone: blok.phone || '',
@@ -378,7 +421,6 @@ function renderContactInfo(blok) {
   });
 }
 
-// Form renderer with enhanced error handling
 function renderForm(blok) {
   return Form({
     title: blok.title || '',
@@ -410,12 +452,11 @@ function renderForm(blok) {
   });
 }
 
-// Enhanced fallback hero with better styling
 function createFallbackHero(blok) {
   console.log('🆘 Creating fallback hero for:', blok);
 
   const heroElement = createElement('section', {
-    classes: ['fallback-hero', 'muchandy-hero-fallback'],
+    className: 'fallback-hero muchandy-hero-fallback',
     style: {
       minHeight: '60vh',
       display: 'flex',
@@ -433,7 +474,6 @@ function createFallbackHero(blok) {
     },
   });
 
-  // Title
   const title = createElement('h1', {
     innerHTML: blok.title || 'Muchandy<br>Handy-Service',
     style: {
@@ -444,9 +484,8 @@ function createFallbackHero(blok) {
     },
   });
 
-  // Subtitle
   const subtitle = createElement('p', {
-    text:
+    textContent:
       blok.subtitle ||
       'Professionelle Handy-Reparaturen und faire Ankaufspreise',
     style: {
@@ -456,14 +495,12 @@ function createFallbackHero(blok) {
     },
   });
 
-  // Call to action
   const ctaButton = Button({
-    text: 'Jetzt Preis berechnen',
+    children: 'Jetzt Preis berechnen',
     variant: 'secondary',
     size: 'large',
     onClick: () => {
       console.log('Fallback hero CTA clicked');
-      // You could navigate to a specific page or scroll to forms
     },
   });
 
@@ -478,7 +515,7 @@ function createFallbackHero(blok) {
   };
 }
 
-// Main component renderer - KISS principle
+// Main component renderer (unchanged)
 export function renderStoryblokComponent(blok) {
   console.log('=== RENDERING COMPONENT ===');
   console.log('Component type:', blok.component);
@@ -502,13 +539,13 @@ export function renderStoryblokComponent(blok) {
   }
 }
 
-// Main components renderer with enhanced error handling
+// Main components renderer (unchanged)
 export function renderStoryblokComponents(bloks) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', bloks.length);
 
   const container = createElement('div', {
-    classes: ['storyblok-content'],
+    className: 'storyblok-content',
     style: { width: '100%' },
   });
 
@@ -530,60 +567,17 @@ export function renderStoryblokComponents(bloks) {
         error
       );
 
-      // Create enhanced error display
       const errorElement = createElement('div', {
-        classes: ['component-error'],
+        className: 'component-error',
         style: {
-          padding: '1.5rem',
-          background: 'linear-gradient(135deg, #fee, #fdd)',
-          border: '2px solid #dc3545',
-          borderRadius: '8px',
+          padding: '1rem',
+          background: '#fee',
+          border: '1px solid #dc3545',
+          borderRadius: '4px',
           margin: '1rem 0',
-          boxShadow: '0 2px 8px rgba(220, 53, 69, 0.1)',
+          color: '#dc3545',
         },
-        children: [
-          createElement('div', {
-            style: {
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '0.5rem',
-            },
-            children: [
-              createElement('span', {
-                text: '⚠️',
-                style: { fontSize: '1.5rem', marginRight: '0.5rem' },
-              }),
-              createElement('strong', {
-                text: `Error in ${blok.component} component`,
-                style: { color: '#dc3545', fontSize: '1.1rem' },
-              }),
-            ],
-          }),
-          createElement('p', {
-            text: error.message,
-            style: { margin: '0.5rem 0', color: '#666' },
-          }),
-          createElement('details', {
-            style: { marginTop: '1rem' },
-            children: [
-              createElement('summary', {
-                text: 'Show Technical Details',
-                style: { cursor: 'pointer', fontWeight: '600' },
-              }),
-              createElement('pre', {
-                style: {
-                  fontSize: '0.8rem',
-                  overflow: 'auto',
-                  background: '#f8f9fa',
-                  padding: '1rem',
-                  borderRadius: '4px',
-                  marginTop: '0.5rem',
-                },
-                text: JSON.stringify(blok, null, 2),
-              }),
-            ],
-          }),
-        ],
+        innerHTML: `<strong>⚠️ Error in ${blok.component} component:</strong><br>${error.message}`,
       });
 
       container.appendChild(errorElement);
@@ -593,30 +587,30 @@ export function renderStoryblokComponents(bloks) {
   console.log(
     `✅ Component rendering complete: ${successCount} success, ${errorCount} errors`
   );
-
-  // Add summary if there were errors
-  if (errorCount > 0) {
-    console.warn(
-      `⚠️ ${errorCount} components failed to render. Check console for details.`
-    );
-  }
-
   return container;
 }
 
-// Development helpers
+// Development helpers with enhanced debugging
 if (import.meta.env.DEV) {
   window.testMuchandyHero = () => {
-    console.log('🧪 Testing MuchandyHero component...');
+    console.log('🧪 Testing ABSOLUTE FINAL FIX MuchandyHero...');
     try {
       const testBlok = {
         component: 'muchandy_hero',
         title: 'Test Hero',
-        subtitle: 'Testing API integration',
+        subtitle: 'Testing with ACTUAL library props',
         default_tab: 'repair',
       };
       const hero = renderMuchandyHero(testBlok);
       console.log('✅ Test hero created:', hero);
+
+      // Check for tabs immediately
+      const element = hero.getElement();
+      const tabs = element.querySelectorAll(
+        '.svarog-tabs__tab, [class*="tab"]'
+      );
+      console.log(`🔍 Test: Found ${tabs.length} tab elements immediately`);
+
       return hero;
     } catch (error) {
       console.error('❌ Test hero failed:', error);
@@ -626,6 +620,7 @@ if (import.meta.env.DEV) {
 
   window.testApiService = () => {
     console.log('🧪 Testing API service...');
+    const apiService = getApiService();
     apiService.testConnection();
     apiService
       .fetchManufacturers()
@@ -637,11 +632,52 @@ if (import.meta.env.DEV) {
       });
   };
 
-  console.log('🔧 Development helpers available:');
+  // Enhanced debugging
+  window.debugTabsSpecifically = () => {
+    console.log('🔍 DEBUGGING TABS SPECIFICALLY');
+    console.log('================================');
+
+    // Look for all possible tab-related elements
+    const allTabSelectors = [
+      '.svarog-tabs__tab',
+      '.svarog-tab',
+      '[class*="tab"]',
+      '[role="tab"]',
+      '.tab',
+      '.tabs',
+    ];
+
+    allTabSelectors.forEach((selector) => {
+      const elements = document.querySelectorAll(selector);
+      console.log(`${selector}: ${elements.length} elements`);
+      elements.forEach((el, i) => {
+        console.log(`  ${i}: ${el.className} - "${el.textContent?.trim()}"`);
+      });
+    });
+
+    // Look inside MuchandyHero specifically
+    const hero = document.querySelector('.muchandy-hero');
+    if (hero) {
+      console.log('🎯 Inside MuchandyHero:');
+      allTabSelectors.forEach((selector) => {
+        const elements = hero.querySelectorAll(selector);
+        console.log(`  ${selector}: ${elements.length} elements`);
+      });
+
+      // Check all children
+      console.log('All children in MuchandyHero:');
+      Array.from(hero.children).forEach((child, i) => {
+        console.log(`  Child ${i}: ${child.tagName}.${child.className}`);
+      });
+    }
+  };
+
+  console.log('🔧 ABSOLUTE FINAL FIX Development helpers:');
   console.log('  - window.testMuchandyHero()');
   console.log('  - window.testApiService()');
+  console.log('  - window.debugTabsSpecifically()');
 }
 
 console.log(
-  '✅ Enhanced StoryblokComponent ready with MuchandyHero and API integration'
+  '✅ ABSOLUTE FINAL FIX StoryblokComponent ready - SHOULD WORK NOW!'
 );

@@ -142,4 +142,251 @@ if (import.meta.hot) {
   import.meta.hot.accept();
 }
 
+// Add this to the end of your src/main.js file - CLEAN VERSION (No ESLint errors)
+
+// Debug helpers for interface issues - Economy of Expression
+if (import.meta.env.DEV) {
+  window.debugInterface = () => {
+    console.log('🔍 DEBUGGING INTERFACE ISSUES');
+    console.log('==============================');
+
+    // Check for MuchandyHero - KISS principle
+    const hero = document.querySelector(
+      '.muchandy-hero, .svarog-muchandy-hero'
+    );
+    console.log('🎯 MuchandyHero found:', !!hero);
+    if (hero) {
+      console.log('   Element:', hero);
+      console.log('   Classes:', hero.className);
+      console.log(
+        '   Style.pointerEvents:',
+        getComputedStyle(hero).pointerEvents
+      );
+    }
+
+    // Check for Tabs - Algorithmic Elegance
+    const tabs = document.querySelectorAll('.svarog-tabs__tab');
+    console.log('📋 Tab elements found:', tabs.length);
+    tabs.forEach((tab, i) => {
+      const styles = getComputedStyle(tab);
+      console.log(`   Tab ${i}: "${tab.textContent?.trim()}"`, {
+        clickable: styles.pointerEvents !== 'none',
+        zIndex: styles.zIndex,
+        position: styles.position,
+        cursor: styles.cursor,
+      });
+    });
+
+    // Check for Buttons - Maximum Conciseness
+    const buttons = document.querySelectorAll('.svarog-button, button');
+    console.log('🔘 Button elements found:', buttons.length);
+    buttons.forEach((btn, i) => {
+      console.log(`   Button ${i}: "${btn.textContent?.trim()}"`, {
+        clickable: getComputedStyle(btn).pointerEvents !== 'none',
+        cursor: getComputedStyle(btn).cursor,
+        disabled: btn.disabled,
+        type: btn.type || 'button',
+      });
+    });
+
+    // Check for Select dropdowns
+    const selects = document.querySelectorAll('.svarog-select, select');
+    console.log('📋 Select elements found:', selects.length);
+    selects.forEach((select, i) => {
+      console.log(`   Select ${i}:`, {
+        clickable: getComputedStyle(select).pointerEvents !== 'none',
+        zIndex: getComputedStyle(select).zIndex,
+        options: select.options?.length || 0,
+        value: select.value,
+      });
+    });
+
+    // Summary
+    const summary = {
+      hero: !!hero,
+      tabsCount: tabs.length,
+      buttonsCount: buttons.length,
+      selectsCount: selects.length,
+      allClickable: [...tabs, ...buttons, ...selects].every(
+        (el) => getComputedStyle(el).pointerEvents !== 'none'
+      ),
+    };
+
+    console.log('📊 Summary:', summary);
+    return summary;
+  };
+
+  window.makeClickable = () => {
+    console.log('🔧 FORCING ELEMENTS TO BE CLICKABLE');
+    console.log('===================================');
+
+    // Force all potentially interactive elements to be clickable - Economy of Expression
+    const selectors = [
+      '.svarog-button',
+      '.svarog-tabs__tab',
+      '.svarog-select',
+      'button',
+      'select',
+      '[role="button"]',
+      '[role="tab"]',
+    ];
+
+    let totalFixed = 0;
+
+    selectors.forEach((selector) => {
+      const elements = document.querySelectorAll(selector);
+      console.log(`🎯 Found ${elements.length} elements for: ${selector}`);
+
+      elements.forEach((el, i) => {
+        // Force clickable styles
+        el.style.pointerEvents = 'auto';
+        el.style.cursor = 'pointer';
+        el.style.zIndex = '1';
+        el.style.position = 'relative';
+
+        // Add visual feedback - green outline for 3 seconds
+        el.style.outline = '2px solid lime';
+        el.style.outlineOffset = '2px';
+
+        // Add test click listener
+        const testHandler = (e) => {
+          console.log(
+            `✅ Click detected on ${selector}[${i}]:`,
+            e.target.textContent?.trim() || e.target.tagName
+          );
+          e.target.style.outline = '2px solid gold';
+          setTimeout(() => {
+            e.target.style.outline = '';
+          }, 1000);
+        };
+
+        el.addEventListener('click', testHandler, { once: true });
+
+        // Remove green outline after 3 seconds
+        setTimeout(() => {
+          el.style.outline = '';
+          el.style.outlineOffset = '';
+        }, 3000);
+
+        totalFixed++;
+      });
+    });
+
+    console.log(
+      `✅ Fixed ${totalFixed} elements (green outlines for 3 seconds)`
+    );
+    console.log('🧪 Click any element to see gold flash confirmation');
+
+    return totalFixed;
+  };
+
+  window.testMuchandyHeroInteraction = () => {
+    console.log('🧪 TESTING MUCHANDY HERO INTERACTION');
+    console.log('====================================');
+
+    // Find the hero
+    const hero = document.querySelector(
+      '.muchandy-hero, .svarog-muchandy-hero'
+    );
+    if (!hero) {
+      console.error('❌ MuchandyHero not found!');
+      console.log('🔍 Available elements:', {
+        muchandyClasses: document.querySelectorAll('[class*="muchandy"]')
+          .length,
+        svarogClasses: document.querySelectorAll('[class*="svarog"]').length,
+        heroClasses: document.querySelectorAll('[class*="hero"]').length,
+      });
+      return false;
+    }
+
+    console.log('✅ MuchandyHero found:', hero);
+
+    // Test tabs - KISS principle
+    const tabs = hero.querySelectorAll('.svarog-tabs__tab');
+    console.log(`📋 Found ${tabs.length} tabs`);
+
+    if (tabs.length > 0) {
+      console.log('🧪 Testing tab clicks...');
+      tabs.forEach((tab, i) => {
+        const tabText = tab.textContent?.trim();
+        const isClickable = getComputedStyle(tab).pointerEvents !== 'none';
+        console.log(`   Tab ${i}: "${tabText}" - Clickable: ${isClickable}`);
+
+        if (isClickable) {
+          // Add click test
+          tab.addEventListener(
+            'click',
+            () => {
+              console.log(`✅ Tab "${tabText}" clicked successfully!`);
+            },
+            { once: true }
+          );
+        }
+      });
+    }
+
+    // Test selects - Maximum Conciseness
+    const selects = hero.querySelectorAll('select, .svarog-select');
+    console.log(`📋 Found ${selects.length} select elements`);
+
+    selects.forEach((select, i) => {
+      console.log(`   Select ${i}:`, {
+        options: select.options?.length || 0,
+        value: select.value,
+        firstOption: select.options?.[0]?.textContent,
+      });
+    });
+
+    // Test buttons
+    const buttons = hero.querySelectorAll('button, .svarog-button');
+    console.log(`🔘 Found ${buttons.length} buttons`);
+
+    buttons.forEach((button, i) => {
+      const buttonText = button.textContent?.trim();
+      console.log(
+        `   Button ${i}: "${buttonText}" - Disabled: ${button.disabled}`
+      );
+    });
+
+    const result = {
+      heroFound: true,
+      tabsCount: tabs.length,
+      selectsCount: selects.length,
+      buttonsCount: buttons.length,
+      allTabsClickable:
+        tabs.length > 0 &&
+        [...tabs].every(
+          (tab) => getComputedStyle(tab).pointerEvents !== 'none'
+        ),
+    };
+
+    console.log('📊 Test Results:', result);
+    return result;
+  };
+
+  // Automatic interface check on page load
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      console.log('🔍 Auto-checking interface after page load...');
+      const check = window.debugInterface();
+
+      if (!check.allClickable) {
+        console.warn(
+          '⚠️ Some elements are not clickable. Run window.makeClickable() to fix.'
+        );
+      } else {
+        console.log('✅ All interactive elements appear clickable');
+      }
+    }, 2000); // Wait 2 seconds for components to load
+  });
+
+  console.log('🔧 Clean debug helpers added (no ESLint errors):');
+  console.log('  - window.debugInterface() - Check all interactive elements');
+  console.log('  - window.makeClickable() - Force all elements clickable');
+  console.log(
+    '  - window.testMuchandyHeroInteraction() - Test MuchandyHero specifically'
+  );
+  console.log('  - Auto-check runs 2 seconds after page load');
+}
+
 console.log('=== MAIN.JS END ===');

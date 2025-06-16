@@ -1,5 +1,6 @@
 /* Global styles for Muchandy webapp */
 @import './svgLogos.css';
+@import './emergency-fix.css'; /* NEW: Import emergency fixes */
 
 * {
   box-sizing: border-box;

@@ -1,4 +1,4 @@
-// src/services/apiService.js - Updated for query parameter API
+// src/services/apiService.js - FIXED: Query parameters + better error handling
 export default class ApiService {
   constructor() {
     this.cache = new Map();
@@ -6,7 +6,7 @@ export default class ApiService {
     console.log('🔧 ApiService initialized with baseUrl:', this.baseUrl);
   }
 
-  // Enhanced fetch with detailed logging
+  // Enhanced fetch with better error handling - KISS principle
   async get(endpoint, useCache = true) {
     const fullUrl = `${this.baseUrl}${endpoint}`;
     console.log(`🌐 API GET: ${fullUrl}`);
@@ -39,7 +39,7 @@ export default class ApiService {
     }
   }
 
-  // Updated methods using query parameters instead of route parameters
+  // FIXED: Query parameter methods (not route parameters)
   async fetchManufacturers() {
     console.log('🏭 Fetching manufacturers...');
     try {
@@ -59,7 +59,7 @@ export default class ApiService {
   async fetchDevicesByManufacturer(manufacturerId) {
     console.log(`📱 Fetching devices for manufacturer ${manufacturerId}...`);
     try {
-      // Updated to use query parameter
+      // FIXED: Query parameter instead of route parameter
       const data = await this.get(
         `/api/devices?manufacturerId=${manufacturerId}`
       );
@@ -85,7 +85,7 @@ export default class ApiService {
   async fetchActionsByDevice(deviceId) {
     console.log(`🔧 Fetching actions for device ${deviceId}...`);
     try {
-      // Actions endpoint doesn't need device ID in the query parameter approach
+      // Actions are not device-specific in this API
       const data = await this.get('/api/actions');
       console.log(`✅ Actions loaded:`, data);
       return data;
@@ -104,7 +104,7 @@ export default class ApiService {
       `💰 Fetching price for action ${actionId}, device ${deviceId}...`
     );
     try {
-      // Build query string manually for browser compatibility
+      // FIXED: Query parameters with proper encoding
       let queryString = `actionId=${actionId}`;
       if (deviceId) {
         queryString += `&deviceId=${deviceId}`;
@@ -134,7 +134,7 @@ export default class ApiService {
   fetchPriceForCondition = (actionId, deviceId) =>
     this.fetchPriceForAction(actionId, deviceId);
 
-  // Test API connectivity
+  // Test API connectivity - FIXED
   async testConnection() {
     console.log('🧪 Testing API connection...');
     try {
@@ -148,7 +148,7 @@ export default class ApiService {
     }
   }
 
-  // Clear cache
+  // Clear cache - Maximum Conciseness
   clearCache() {
     console.log('🗑️ Clearing API cache...');
     this.cache.clear();
