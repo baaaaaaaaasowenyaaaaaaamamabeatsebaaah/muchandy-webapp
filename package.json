@@ -8,17 +8,17 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node test-components.js",
+    "start": "node server.js",
+    "db:setup": "npx prisma generate && npx prisma migrate dev",
+    "db:studio": "npx prisma studio",
+    "db:reset": "npx prisma migrate reset --force",
+    "crawl": "node -e \"import('./src/services/simpleCrawler.js').then(({crawlPrices}) => crawlPrices())\"",
+    "crawl:test": "node -e \"import('./src/services/simpleCrawler.js').then(({crawlPrices}) => crawlPrices()).catch(console.error)\"",
+    "setup": "npm install && npm run db:setup && npm run crawl",
+    "fresh": "npm run db:reset && npm run crawl && npm run dev",
     "lint": "eslint src --ext .js --fix",
-    "lint:check": "eslint src --ext .js",
     "format": "prettier --write src/**/*.{js,css,html}",
-    "format:check": "prettier --check src/**/*.{js,css,html}",
-    "clean": "rm -rf dist node_modules/.vite",
-    "clean:all": "rm -rf dist node_modules package-lock.json && npm install",
-    "analyze": "npm run build -- --mode analyze",
-    "serve": "npm run build && npm run preview",
-    "validate": "npm run lint:check && npm run format:check",
-    "start": "npm run dev"
+    "validate": "npm run lint && npm run format"
   },
   "keywords": [
     "muchandy",
@@ -30,9 +30,13 @@
   "author": "Sebastian Huber",
   "license": "MIT",
   "dependencies": {
-    "@svarog-ui/theme-muchandy": "^1.9.1",
+    "@prisma/client": "^6.9.0",
+    "@svarog-ui/theme-muchandy": "^1.9.2",
+    "express": "^5.1.0",
+    "prisma": "^6.9.0",
+    "puppeteer": "^24.10.1",
     "storyblok-js-client": "^6.0.0",
-    "svarog-ui-core": "^2.7.1"
+    "svarog-ui-core": "^2.7.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

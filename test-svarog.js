@@ -1,5 +1,5 @@
 // Test Svarog UI packages are working correctly
-import { Button, Card, createElement, ThemeManager } from 'svarog-ui-core';
+import { Button, Card, createElement, themeManager } from 'svarog-ui-core';
 import MuchandyTheme from '@svarog-ui/theme-muchandy';
 
 console.log('=== Testing Svarog UI Packages ===\n');
@@ -10,7 +10,7 @@ try {
   console.log('   - Button:', typeof Button);
   console.log('   - Card:', typeof Card);
   console.log('   - createElement:', typeof createElement);
-  console.log('   - ThemeManager:', typeof ThemeManager);
+  console.log('   - ThemeManager:', typeof themeManager);
 
   // Test 2: Theme import
   console.log('\n✅ Muchandy theme imported successfully');
@@ -29,7 +29,7 @@ try {
   console.log('   - Card API:', Object.keys(card));
 
   // Test 4: Check theme manager
-  if (ThemeManager && ThemeManager.load) {
+  if (themeManager && themeManager.load) {
     console.log('\n✅ ThemeManager available with load method');
   }
 

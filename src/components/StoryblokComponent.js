@@ -1,3 +1,4 @@
+// src/components/StoryblokComponent.js - Clean & Concise
 import {
   Button,
   Card,
@@ -5,14 +6,23 @@ import {
   ContactInfo,
   Form,
   createElement,
+  PhoneRepairForm,
+  UsedPhonePriceForm,
+  MuchandyHero,
 } from 'svarog-ui-core';
 
+import ApiService from '../services/apiService.js';
 import { router } from '../utils/router.js';
 
-console.log('=== STORYBLOK COMPONENT.JS LOADING ===');
+console.log('=== STORYBLOK COMPONENT LOADING ===');
 
+// Single API service instance - Algorithmic Elegance
+const apiService = new ApiService();
+
+// Component map - Economy of Expression
 const componentMap = {
   hero: renderHero,
+  muchandy_hero: renderMuchandyHero,
   section: renderSection,
   card: renderCard,
   blog_card: renderBlogCard,
@@ -22,6 +32,39 @@ const componentMap = {
   form: renderForm,
 };
 
+// MuchandyHero renderer - Maximum conciseness
+function renderMuchandyHero(blok) {
+  console.log('Rendering MuchandyHero:', blok);
+
+  try {
+    const repairForm = PhoneRepairForm({
+      service: apiService,
+      onPriceChange: (price) => console.log('Repair price:', price),
+      onScheduleClick: (data) => console.log('Schedule repair:', data),
+    });
+
+    const buybackForm = UsedPhonePriceForm({
+      service: apiService,
+      onPriceChange: (price) => console.log('Buyback price:', price),
+      onSubmit: (data) => console.log('Submit buyback:', data),
+    });
+
+    return MuchandyHero({
+      backgroundImageUrl: blok.background_image?.filename || '',
+      title: blok.title || 'Finden Sie<br>Ihren Preis',
+      subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
+      defaultTab: blok.default_tab || 'repair',
+      repairForm,
+      buybackForm,
+      className: blok.className || '',
+    });
+  } catch (error) {
+    console.error('❌ Error creating MuchandyHero:', error);
+    return createFallbackHero(blok);
+  }
+}
+
+// Standard hero renderer - KISS principle
 function renderHero(blok) {
   console.log('Rendering hero:', blok);
 
@@ -95,33 +138,11 @@ function renderHero(blok) {
       children.push(ctaButton.getElement());
     } catch (error) {
       console.error('❌ Error creating CTA button:', error);
-
-      // Fallback link
-      children.push(
-        createElement('a', {
-          attributes: {
-            href: blok.cta_link.url,
-            target: blok.cta_link.target || '_self',
-            class: 'btn btn--secondary btn--lg',
-          },
-          text: blok.cta_text,
-          style: {
-            display: 'inline-block',
-            padding: '1rem 2rem',
-            background: 'var(--button-secondary-bg, #37474F)',
-            color: 'var(--button-secondary-color, white)',
-            textDecoration: 'none',
-            borderRadius: 'var(--button-radius, 0.5rem)',
-            marginTop: '1rem',
-          },
-        })
-      );
     }
   }
 
   children.forEach((child) => heroElement.appendChild(child));
 
-  // Return component-like API
   return {
     getElement: () => heroElement,
     update: () => {},
@@ -129,6 +150,7 @@ function renderHero(blok) {
   };
 }
 
+// Section renderer - Occam's Razor
 function renderSection(blok) {
   console.log('Rendering section:', blok);
 
@@ -168,39 +190,24 @@ function renderSection(blok) {
     );
   }
 
-  // Render nested components
   if (blok.content && blok.content.length > 0) {
     const contentContainer = createElement('div', {
       classes: ['section-content'],
       style: {
         display: 'grid',
         gap: 'var(--space-6, 1.5rem)',
-        gridTemplateColumns:
-          blok.columns || 'repeat(auto-fit, minmax(300px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
       },
     });
 
-    blok.content.forEach((nestedBlok, index) => {
+    blok.content.forEach((nestedBlok) => {
       try {
         const nestedComponent = renderStoryblokComponent(nestedBlok);
         if (nestedComponent) {
           contentContainer.appendChild(nestedComponent.getElement());
         }
       } catch (error) {
-        console.error(`Error rendering nested component ${index}:`, error);
-
-        contentContainer.appendChild(
-          createElement('div', {
-            classes: ['component-error'],
-            style: {
-              padding: '1rem',
-              background: '#fee',
-              border: '1px solid red',
-              borderRadius: '4px',
-            },
-            html: `<strong>Error:</strong> ${error.message}`,
-          })
-        );
+        console.error(`Error rendering nested component:`, error);
       }
     });
 
@@ -214,31 +221,22 @@ function renderSection(blok) {
   };
 }
 
+// Card renderer - Economy of Expression
 function renderCard(blok) {
-  if (!blok.title) {
-    console.warn('Card missing required title, using default');
-    blok.title = 'Untitled';
-  }
-
   return Card({
-    title: blok.title,
+    title: blok.title || 'Untitled',
     description: blok.description || '',
     imageUrl: blok.image?.filename,
     alt: blok.image?.alt || blok.title,
     href: blok.link?.url,
     variant: blok.variant || 'default',
-    onClick: blok.link?.url ? undefined : blok.onClick,
   });
 }
 
+// BlogCard renderer
 function renderBlogCard(blok) {
-  if (!blok.title) {
-    console.warn('BlogCard missing required title, using default');
-    blok.title = 'Untitled Blog Post';
-  }
-
   return BlogCard({
-    title: blok.title,
+    title: blok.title || 'Untitled Blog Post',
     description: blok.description || '',
     imageUrl: blok.image?.filename,
     alt: blok.image?.alt || blok.title,
@@ -249,18 +247,13 @@ function renderBlogCard(blok) {
   });
 }
 
+// Button renderer
 function renderButton(blok) {
-  // Validate required props
   if (!blok.text) {
     throw new Error('Button component requires text prop');
   }
 
-  // Map Storyblok sizes to Svarog sizes
-  const sizeMap = {
-    small: 'sm',
-    medium: '',
-    large: 'lg',
-  };
+  const sizeMap = { small: 'sm', medium: '', large: 'lg' };
 
   return Button({
     text: blok.text,
@@ -269,7 +262,6 @@ function renderButton(blok) {
     disabled: blok.disabled || false,
     className: blok.className,
     onClick: (e) => {
-      // Handle link navigation
       if (blok.link?.url) {
         if (blok.link.url.startsWith('http')) {
           window.open(blok.link.url, blok.link.target || '_self');
@@ -278,7 +270,6 @@ function renderButton(blok) {
           router.navigate(blok.link.url);
         }
       }
-      // Call custom onClick if provided
       if (blok.onClick) {
         blok.onClick(e);
       }
@@ -286,6 +277,7 @@ function renderButton(blok) {
   });
 }
 
+// Text renderer
 function renderText(blok) {
   const textElement = createElement('div', {
     classes: ['richtext-content'],
@@ -303,6 +295,7 @@ function renderText(blok) {
   };
 }
 
+// ContactInfo renderer
 function renderContactInfo(blok) {
   return ContactInfo({
     phone: blok.phone || '',
@@ -312,6 +305,7 @@ function renderContactInfo(blok) {
   });
 }
 
+// Form renderer
 function renderForm(blok) {
   return Form({
     title: blok.title || '',
@@ -319,8 +313,6 @@ function renderForm(blok) {
     submitText: blok.submit_text || 'Submit',
     onSubmit: async (data) => {
       console.log('Form submitted:', data);
-
-      // Handle form submission
       if (blok.endpoint) {
         try {
           const response = await fetch(blok.endpoint, {
@@ -345,6 +337,44 @@ function renderForm(blok) {
   });
 }
 
+// Fallback hero - minimal
+function createFallbackHero(blok) {
+  const heroElement = createElement('section', {
+    classes: ['fallback-hero'],
+    style: {
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2rem',
+      background: blok.background_image?.filename
+        ? `url(${blok.background_image.filename})`
+        : 'linear-gradient(135deg, #ff6b35, #f7931e)',
+      backgroundSize: 'cover',
+      color: 'white',
+      textAlign: 'center',
+    },
+    children: [
+      createElement('h1', {
+        text: blok.title || 'Muchandy Hero',
+        style: { fontSize: '3rem', marginBottom: '1rem' },
+      }),
+      createElement('p', {
+        text: blok.subtitle || 'Professionelle Handy-Services',
+        style: { fontSize: '1.2rem' },
+      }),
+    ],
+  });
+
+  return {
+    getElement: () => heroElement,
+    update: () => {},
+    destroy: () => heroElement.remove(),
+  };
+}
+
+// Main component renderer - KISS principle
 export function renderStoryblokComponent(blok) {
   console.log('=== RENDERING COMPONENT ===');
   console.log('Component type:', blok.component);
@@ -367,6 +397,7 @@ export function renderStoryblokComponent(blok) {
   }
 }
 
+// Main components renderer
 export function renderStoryblokComponents(bloks) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', bloks.length);
@@ -422,4 +453,4 @@ export function renderStoryblokComponents(bloks) {
   return container;
 }
 
-console.log('✅ StoryblokComponent ready with Svarog UI');
+console.log('✅ StoryblokComponent ready with MuchandyHero');
