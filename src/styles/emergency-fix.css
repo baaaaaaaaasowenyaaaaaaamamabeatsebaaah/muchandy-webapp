@@ -1,231 +1,52 @@
-/* src/styles/emergency-fix.css - Emergency CSS to fix non-clickable interface */
-
-/* Reset potential z-index issues */
-.svarog-tabs,
-.svarog-button,
-.svarog-select,
-.svarog-input,
-.muchandy-hero,
-.svarog-phone-repair-form,
-.svarog-used-phone-price-form {
+/* Specific fixes for MuchandyHero in the webapp */
+.muchandy-hero-enhanced {
   position: relative !important;
   z-index: 1 !important;
 }
 
-/* Ensure buttons are clickable */
-.svarog-button {
+.muchandy-hero-enhanced * {
+  pointer-events: auto !important;
+}
+
+.muchandy-hero-enhanced .svarog-tabs {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.muchandy-hero-enhanced .svarog-tabs__tab {
   pointer-events: auto !important;
   cursor: pointer !important;
   user-select: none !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
+  position: relative !important;
+  z-index: 20 !important;
 }
 
-/* Ensure tabs are clickable */
-.svarog-tabs__tab {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  -webkit-user-select: none !important;
-  touch-action: manipulation !important;
-}
-
-/* Ensure select dropdowns work */
-.svarog-select {
+.muchandy-hero-enhanced select,
+.muchandy-hero-enhanced .svarog-select {
   pointer-events: auto !important;
   cursor: pointer !important;
   position: relative !important;
+  z-index: 30 !important;
+  -webkit-appearance: menulist !important;
+  appearance: menulist !important;
 }
 
-.svarog-select select {
+.muchandy-hero-enhanced button,
+.muchandy-hero-enhanced .svarog-button {
   pointer-events: auto !important;
   cursor: pointer !important;
-  background: white !important;
-  border: 1px solid #ccc !important;
-  min-height: 40px !important;
-}
-
-/* Fix any overlay issues */
-.svarog-tabs__content,
-.svarog-form,
-.svarog-form-group {
-  pointer-events: auto !important;
   position: relative !important;
-  z-index: 1 !important;
+  z-index: 20 !important;
 }
 
-/* Ensure proper spacing and visibility */
-.muchandy-hero {
-  min-height: 60vh !important;
-  padding: 2rem !important;
-  background: linear-gradient(135deg, #ff6b35, #f7931e) !important;
+/* Ensure form elements are above everything */
+.muchandy-hero-enhanced .svarog-form-group {
+  position: relative !important;
+  z-index: 15 !important;
 }
 
-.svarog-tabs {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-radius: 8px !important;
-  padding: 1rem !important;
-  margin: 2rem auto !important;
-  max-width: 800px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Tab button fixes */
-.svarog-tabs__nav {
-  display: flex !important;
-  gap: 0.5rem !important;
-  margin-bottom: 1rem !important;
-}
-
-.svarog-tabs__tab {
-  padding: 0.75rem 1.5rem !important;
-  border: 1px solid #ddd !important;
-  background: #f8f9fa !important;
-  border-radius: 4px !important;
-  transition: all 0.2s ease !important;
-  font-weight: 500 !important;
-}
-
-.svarog-tabs__tab:hover {
-  background: #e9ecef !important;
-  transform: translateY(-1px) !important;
-}
-
-.svarog-tabs__tab--active {
-  background: #ff6b35 !important;
-  color: white !important;
-  border-color: #ff6b35 !important;
-}
-
-/* Form element fixes */
-.svarog-form-group {
-  margin-bottom: 1rem !important;
-}
-
-.svarog-form-group label {
-  display: block !important;
-  margin-bottom: 0.5rem !important;
-  font-weight: 500 !important;
-  color: #333 !important;
-}
-
-.svarog-select,
-.svarog-input {
-  width: 100% !important;
-  min-height: 40px !important;
-  padding: 0.5rem !important;
-  border: 1px solid #ddd !important;
-  border-radius: 4px !important;
-  font-size: 1rem !important;
-  background: white !important;
-}
-
-.svarog-select:focus,
-.svarog-input:focus {
-  outline: none !important;
-  border-color: #ff6b35 !important;
-  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2) !important;
-}
-
-/* Button fixes */
-.svarog-button {
-  padding: 0.75rem 1.5rem !important;
-  border: none !important;
-  border-radius: 4px !important;
-  font-size: 1rem !important;
-  font-weight: 500 !important;
-  transition: all 0.2s ease !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 44px !important; /* Touch-friendly */
-}
-
-.svarog-button--primary {
-  background: #ff6b35 !important;
-  color: white !important;
-}
-
-.svarog-button--primary:hover {
-  background: #e55a2e !important;
-  transform: translateY(-1px) !important;
-}
-
-.svarog-button--secondary {
-  background: #6c757d !important;
-  color: white !important;
-}
-
-.svarog-button--secondary:hover {
-  background: #545b62 !important;
-  transform: translateY(-1px) !important;
-}
-
-/* Price display fixes */
-.svarog-price-display {
-  background: rgba(255, 255, 255, 0.9) !important;
-  padding: 1rem !important;
-  border-radius: 4px !important;
-  margin: 1rem 0 !important;
-  text-align: center !important;
-  border: 2px solid #ff6b35 !important;
-}
-
-.svarog-price-display__price {
-  font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  color: #ff6b35 !important;
-}
-
-/* Loading state fixes */
-.svarog-loading {
-  text-align: center !important;
-  padding: 1rem !important;
-  color: #666 !important;
-}
-
-/* Error state fixes */
-.svarog-error {
-  background: #fee !important;
-  border: 1px solid #dc3545 !important;
-  color: #dc3545 !important;
-  padding: 1rem !important;
-  border-radius: 4px !important;
-  margin: 1rem 0 !important;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  .svarog-tabs {
-    margin: 1rem !important;
-    padding: 1rem !important;
-  }
-
-  .svarog-tabs__nav {
-    flex-direction: column !important;
-  }
-
-  .svarog-tabs__tab {
-    width: 100% !important;
-    text-align: center !important;
-  }
-
-  .muchandy-hero {
-    padding: 1rem !important;
-    min-height: 50vh !important;
-  }
-}
-
-/* Debug helpers */
-.debug-clickable {
-  outline: 2px solid red !important;
-  background: rgba(255, 0, 0, 0.1) !important;
-}
-
-/* Ensure no interference from other styles */
-.svarog-tabs *,
-.svarog-button *,
-.svarog-form * {
-  box-sizing: border-box !important;
+/* Fix any overlaying elements */
+.muchandy-hero-enhanced::before,
+.muchandy-hero-enhanced::after {
+  pointer-events: none !important;
 }

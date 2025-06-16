@@ -142,8 +142,6 @@ if (import.meta.hot) {
   import.meta.hot.accept();
 }
 
-// Add this to the end of your src/main.js file - CLEAN VERSION (No ESLint errors)
-
 // Debug helpers for interface issues - Economy of Expression
 if (import.meta.env.DEV) {
   window.debugInterface = () => {
@@ -152,7 +150,7 @@ if (import.meta.env.DEV) {
 
     // Check for MuchandyHero - KISS principle
     const hero = document.querySelector(
-      '.muchandy-hero, .svarog-muchandy-hero'
+      '.muchandy-hero, .svarog-muchandy-hero, .muchandy-hero-enhanced'
     );
     console.log('🎯 MuchandyHero found:', !!hero);
     if (hero) {
@@ -229,6 +227,7 @@ if (import.meta.env.DEV) {
       'select',
       '[role="button"]',
       '[role="tab"]',
+      '.muchandy-hero-enhanced *',
     ];
 
     let totalFixed = 0;
@@ -286,7 +285,7 @@ if (import.meta.env.DEV) {
 
     // Find the hero
     const hero = document.querySelector(
-      '.muchandy-hero, .svarog-muchandy-hero'
+      '.muchandy-hero, .svarog-muchandy-hero, .muchandy-hero-enhanced'
     );
     if (!hero) {
       console.error('❌ MuchandyHero not found!');
@@ -364,12 +363,57 @@ if (import.meta.env.DEV) {
     return result;
   };
 
-  // Automatic interface check on page load
+  // Enhanced MuchandyHero fix function
+  window.fixMuchandyHero = () => {
+    console.log('🔧 Fixing MuchandyHero interactions...');
+
+    const hero = document.querySelector(
+      '.muchandy-hero, .muchandy-hero-enhanced'
+    );
+    if (!hero) {
+      console.error('❌ MuchandyHero not found!');
+      return false;
+    }
+
+    // Fix all interactive elements
+    const interactiveSelectors = [
+      '.svarog-tabs__tab',
+      'select',
+      '.svarog-select',
+      'button',
+      '.svarog-button',
+      '[role="tab"]',
+      '[role="button"]',
+    ];
+
+    let fixedCount = 0;
+    interactiveSelectors.forEach((selector) => {
+      const elements = hero.querySelectorAll(selector);
+      elements.forEach((el) => {
+        el.style.pointerEvents = 'auto';
+        el.style.cursor = 'pointer';
+        el.style.position = 'relative';
+        el.style.zIndex = '100';
+
+        // Remove any event blocking
+        el.onclick = el.onclick || function () {};
+
+        fixedCount++;
+      });
+    });
+
+    console.log(`✅ Fixed ${fixedCount} interactive elements`);
+    return true;
+  };
+
+  // Auto-fix after page loads
   window.addEventListener('load', () => {
     setTimeout(() => {
-      console.log('🔍 Auto-checking interface after page load...');
-      const check = window.debugInterface();
+      console.log('🔄 Auto-fixing MuchandyHero...');
+      window.fixMuchandyHero();
 
+      // Also run interface check
+      const check = window.debugInterface();
       if (!check.allClickable) {
         console.warn(
           '⚠️ Some elements are not clickable. Run window.makeClickable() to fix.'
@@ -377,16 +421,17 @@ if (import.meta.env.DEV) {
       } else {
         console.log('✅ All interactive elements appear clickable');
       }
-    }, 2000); // Wait 2 seconds for components to load
+    }, 1000); // Wait 1 second for components to load
   });
 
-  console.log('🔧 Clean debug helpers added (no ESLint errors):');
+  console.log('🔧 Clean debug helpers added:');
   console.log('  - window.debugInterface() - Check all interactive elements');
   console.log('  - window.makeClickable() - Force all elements clickable');
   console.log(
     '  - window.testMuchandyHeroInteraction() - Test MuchandyHero specifically'
   );
-  console.log('  - Auto-check runs 2 seconds after page load');
+  console.log('  - window.fixMuchandyHero() - Fix MuchandyHero interactions');
+  console.log('  - Auto-check runs 1 second after page load');
 }
 
 console.log('=== MAIN.JS END ===');

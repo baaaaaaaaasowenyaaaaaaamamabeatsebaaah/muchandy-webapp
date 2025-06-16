@@ -47,126 +47,93 @@ const componentMap = {
 
 // ABSOLUTE FINAL FIX: Use the EXACT props the current library expects
 function renderMuchandyHero(blok) {
-  console.log(
-    '🚀 ABSOLUTE FINAL FIX - MuchandyHero with ACTUAL library props:',
-    blok
-  );
+  console.log('🚀 Rendering MuchandyHero with API service:', blok);
 
   try {
     const apiService = getApiService();
 
-    // CRITICAL FIX: PhoneRepairForm with EXACT current props
+    // Create repair form with minimal, correct props
     const repairForm = PhoneRepairForm({
       service: apiService,
-      // FIXED: Based on the error logs, use these exact prop names
-      loadingStates: {
-        fetchingManufacturers: false,
-        fetchingDevices: false,
-        fetchingActions: false,
-        calculatingPrice: false,
-      },
-      errorMessage: 'Fehler beim Laden der Preise',
       onChange: (priceData) => {
         console.log('💰 Repair price updated:', priceData);
-        if (priceData && priceData.price) {
-          console.log(
-            `Repair quote: ${priceData.formatted} for ${priceData.message}`
-          );
-        }
       },
       onSubmit: (formData) => {
         console.log('📅 Schedule repair clicked:', formData);
-        alert(
-          `Reparatur geplant für ${formData.device || 'Gerät'}: ${formData.action || 'Service'}`
-        );
-      },
-      onError: (error) => {
-        console.error('❌ Repair form error:', error);
-      },
-    });
-
-    // CRITICAL FIX: UsedPhonePriceForm with exact current props
-    const buybackForm = UsedPhonePriceForm({
-      service: apiService,
-      loadingStates: {
-        fetchingManufacturers: false,
-        fetchingDevices: false,
-        fetchingConditions: false,
-        calculatingPrice: false,
-      },
-      errorMessage: 'Fehler bei der Preisberechnung',
-      onChange: (priceData) => {
-        console.log('💰 Buyback price updated:', priceData);
-        if (priceData && priceData.price) {
-          console.log(
-            `Buyback quote: ${priceData.formatted} for ${priceData.message}`
+        if (formData.price) {
+          alert(
+            `Reparatur für ${formData.device}: ${formData.action} - ${formData.formatted || formData.price + ' €'}`
           );
         }
       },
+    });
+
+    // Create buyback form with minimal, correct props
+    const buybackForm = UsedPhonePriceForm({
+      service: apiService,
+      onChange: (priceData) => {
+        console.log('💰 Buyback price updated:', priceData);
+      },
       onSubmit: (formData) => {
         console.log('📝 Buyback form submitted:', formData);
-        alert(
-          `Ankauf angefragt für ${formData.device || 'Gerät'}: ${formData.formatted || 'Preis wird ermittelt'}`
-        );
-      },
-      onError: (error) => {
-        console.error('❌ Buyback form error:', error);
+        if (formData.price) {
+          alert(
+            `Ankauf für ${formData.device}: ${formData.formatted || formData.price + ' €'}`
+          );
+        }
       },
     });
 
-    // THE CRITICAL FIX: Use defaultValue (what the library ACTUALLY expects)
+    // Create MuchandyHero with correct props
     const muchandyHero = MuchandyHero({
       backgroundImageUrl: blok.background_image?.filename || '',
       title: blok.title || 'Finden Sie<br>Ihren Preis',
       subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-
-      // 🔥 THE KEY FIX: Library expects defaultValue, NOT defaultActiveTab
-      defaultValue: blok.default_tab || 'repair', // CRITICAL: Changed from defaultActiveTab
-
-      showTabLabels: blok.show_tab_labels !== false,
-      tabLabels: {
-        repair: blok.repair_tab_label || 'Reparatur',
-        buyback: blok.buyback_tab_label || 'Ankauf',
-      },
+      defaultValue: blok.default_tab || 'repair', // Correct prop name
       repairForm,
       buybackForm,
-      className: blok.className || 'muchandy-hero-enhanced',
-
-      // Use exact current callback names (if they exist)
-      onChange: (tabName) => {
-        console.log(`📋 Tab changed to: ${tabName}`);
-      },
-      onReady: (formType) => {
-        console.log(`✅ ${formType} form ready`);
-      },
+      className: 'muchandy-hero-enhanced',
     });
 
-    console.log(
-      '✅ ABSOLUTE FINAL FIX - MuchandyHero created with ACTUAL library props'
-    );
-    console.log('🔍 Debug: MuchandyHero object:', muchandyHero);
-
-    // Debug the element
-    const element = muchandyHero.getElement();
-    console.log('🔍 Debug: MuchandyHero element:', element);
-
-    // Check for tabs in the element
+    // Force clickability after a small delay to ensure DOM is ready
     setTimeout(() => {
-      const tabs = element.querySelectorAll(
-        '.svarog-tabs__tab, [class*="tab"]'
-      );
-      console.log(
-        `🔍 Debug: Found ${tabs.length} tab elements in MuchandyHero`
-      );
-      tabs.forEach((tab, i) => {
-        console.log(`  Tab ${i}:`, tab.className, tab.textContent);
-      });
+      const heroElement = muchandyHero.getElement();
+      if (heroElement) {
+        // Fix any z-index/pointer-events issues
+        const tabs = heroElement.querySelectorAll(
+          '.svarog-tabs__tab, [class*="tab"]'
+        );
+        tabs.forEach((tab) => {
+          tab.style.pointerEvents = 'auto';
+          tab.style.cursor = 'pointer';
+          tab.style.position = 'relative';
+          tab.style.zIndex = '10';
+        });
+
+        // Fix selects
+        const selects = heroElement.querySelectorAll('select, .svarog-select');
+        selects.forEach((select) => {
+          select.style.pointerEvents = 'auto';
+          select.style.cursor = 'pointer';
+          select.style.position = 'relative';
+          select.style.zIndex = '10';
+        });
+
+        // Fix buttons
+        const buttons = heroElement.querySelectorAll('button, .svarog-button');
+        buttons.forEach((button) => {
+          button.style.pointerEvents = 'auto';
+          button.style.cursor = 'pointer';
+          button.style.position = 'relative';
+          button.style.zIndex = '10';
+        });
+      }
     }, 100);
 
+    console.log('✅ MuchandyHero created successfully');
     return muchandyHero;
   } catch (error) {
-    console.error('❌ Error creating ABSOLUTE FINAL FIX MuchandyHero:', error);
-    console.error('Full error stack:', error.stack);
+    console.error('❌ Error creating MuchandyHero:', error);
     return createFallbackHero(blok);
   }
 }
