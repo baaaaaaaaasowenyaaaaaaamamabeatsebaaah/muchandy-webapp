@@ -1,43 +1,75 @@
-// prisma/schema.prisma - Fixed with Action unique constraint
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  email     String?  @unique
+  role      String   @default("user") // "user" or "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Manufacturer {
-  id      Int      @id @default(autoincrement())
-  name    String   @unique
-  devices Device[]
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  devices  Device[]
 }
 
 model Device {
-  id             Int          @id @default(autoincrement())
+  id             Int        @id @default(autoincrement())
   name           String
   manufacturer   Manufacturer @relation(fields: [manufacturerId], references: [id])
   manufacturerId Int
   actions        Action[]
-  
+
   @@unique([name, manufacturerId])
 }
 
+
 model Action {
-  id       Int     @id @default(autoincrement())
-  name     String
-  device   Device  @relation(fields: [deviceId], references: [id])
-  deviceId Int
-  prices   Price[]
-  
-  @@unique([name, deviceId])  // ← This was missing!
+  id            Int       @id @default(autoincrement())
+  name          String
+  device        Device    @relation(fields: [deviceId], references: [id])
+  deviceId      Int
+  prices        Price[]
+
+  @@index([name, deviceId]) // Adding an index for faster querying
 }
 
 model Price {
   id            Int      @id @default(autoincrement())
   action        Action   @relation(fields: [actionId], references: [id])
   actionId      Int
-  price         Int?     // Price in cents
-  dateCollected DateTime @default(now())
+  price         Int?
+  dateCollected DateTime
 }
+
+model UniqueManufacturer {
+  id       Int           @id @default(autoincrement())
+  name     String        @unique
+  devices  UniqueDevice[]
+}
+
+model UniqueDevice {
+  id                      Int        @id @default(autoincrement())
+  artikelNummer            String     @unique
+  artikelBezeichnung       String
+  ean                     String?
+  beschreibung             String?
+  herstellerArtikelNummer  String?
+  einkaufsPreis            Float
+  nettPreis                Float
+  gewicht                  Float?
+  uniqueManufacturerId     Int
+  uniqueManufacturer       UniqueManufacturer @relation(fields: [uniqueManufacturerId], references: [id])
+}
+
+

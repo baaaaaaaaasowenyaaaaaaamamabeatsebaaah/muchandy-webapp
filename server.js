@@ -1,34 +1,19 @@
-// server.js - Fixed static file serving with Express v5
+// server.js - Express 5.x compatible with careful route syntax
 import express from 'express';
-import { fileURLToPath } from 'url';
-import path from 'path';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = 3000;
+const PORT = 3001;
 
-console.log('🚀 Express v5 with proper static file serving...');
+console.log('🚀 Starting Express 5.x compatible server...');
 
+// Middleware
 app.use(express.json());
-
-// WICHTIG: Static files ZUERST, bevor manual routing
-app.use(
-  express.static('dist', {
-    maxAge: '1d',
-    setHeaders: (res, path) => {
-      // Proper content types for static files
-      if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css');
-      } else if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript');
-      } else if (path.endsWith('.html')) {
-        res.setHeader('Content-Type', 'text/html');
-      }
-    },
-  })
-);
-
-console.log('✅ Static file serving configured');
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
 // Mock data
 const mockData = {
@@ -36,152 +21,206 @@ const mockData = {
     { id: 1, name: 'Apple' },
     { id: 2, name: 'Samsung' },
     { id: 3, name: 'Huawei' },
+    { id: 4, name: 'Google' },
+    { id: 5, name: 'OnePlus' },
   ],
   devices: {
     1: [
-      { id: 1, name: 'iPhone 15 Pro Max' },
-      { id: 2, name: 'iPhone 15 Pro' },
+      { id: 1, name: 'iPhone 15 Pro Max', manufacturerId: 1 },
+      { id: 2, name: 'iPhone 15 Pro', manufacturerId: 1 },
+      { id: 3, name: 'iPhone 15', manufacturerId: 1 },
     ],
     2: [
-      { id: 4, name: 'Galaxy S24 Ultra' },
-      { id: 5, name: 'Galaxy S24+' },
+      { id: 4, name: 'Galaxy S24 Ultra', manufacturerId: 2 },
+      { id: 5, name: 'Galaxy S24+', manufacturerId: 2 },
     ],
     3: [
-      { id: 6, name: 'P60 Pro' },
-      { id: 7, name: 'P60' },
+      { id: 7, name: 'P60 Pro', manufacturerId: 3 },
+      { id: 8, name: 'P60', manufacturerId: 3 },
     ],
+    4: [{ id: 9, name: 'Pixel 8 Pro', manufacturerId: 4 }],
+    5: [{ id: 15, name: 'OnePlus 12', manufacturerId: 5 }],
   },
   actions: [
-    { id: 1, name: 'Display Reparatur' },
-    { id: 2, name: 'Akku Tausch' },
-    { id: 3, name: 'Kamera Reparatur' },
+    { id: 1, name: 'Display Reparatur', basePrice: 299 },
+    { id: 2, name: 'Akku Tausch', basePrice: 89 },
+    { id: 3, name: 'Kamera Reparatur', basePrice: 199 },
+    { id: 4, name: 'Ladebuchse Reparatur', basePrice: 129 },
   ],
-  prices: { 1: 299, 2: 89, 3: 199 },
 };
 
-// Helper function to check if request is for a static file
-function isStaticFile(url) {
-  const staticExtensions = [
-    '.css',
-    '.js',
-    '.png',
-    '.jpg',
-    '.jpeg',
-    '.gif',
-    '.svg',
-    '.ico',
-    '.woff',
-    '.woff2',
-    '.ttf',
-    '.eot',
-  ];
-  return staticExtensions.some((ext) => url.endsWith(ext));
+// Price calculation
+function calculatePrice(deviceId, actionId) {
+  const action = mockData.actions.find((a) => a.id == actionId);
+  if (!action) return null;
+
+  const multipliers = { 1: 1.2, 2: 1.15, 3: 1.1, 4: 1.3, 5: 1.2 };
+  const multiplier = multipliers[deviceId] || 1.0;
+  const finalPrice = Math.round(action.basePrice * multiplier);
+
+  return {
+    price: finalPrice,
+    currency: '€',
+    formatted: `${finalPrice} €`,
+    message: action.name,
+    actionId: parseInt(actionId),
+    deviceId: parseInt(deviceId),
+    basePrice: action.basePrice,
+    multiplier: multiplier,
+    dateCollected: new Date().toISOString(),
+    estimatedTime: action.id === 1 ? '30-60 Min' : '20-30 Min',
+  };
 }
 
-// Manual API routing - only intercept API routes and HTML pages
-app.use((req, res, next) => {
-  const url = req.url;
-  const method = req.method;
+// =================================
+// EXPRESS 5.x SAFE ROUTES
+// =================================
 
-  console.log(`${method} ${url}`);
+// Health check - simple route
+app.get('/health', (req, res) => {
+  console.log('💚 Health check');
+  res.json({
+    status: 'ok',
+    service: 'muchandy-api',
+    port: PORT,
+    express: '5.x',
+    timestamp: new Date().toISOString(),
+  });
+});
 
-  // Let static files pass through to express.static
-  if (isStaticFile(url)) {
-    console.log(`Static file request: ${url}`);
-    return next();
-  }
+// Manufacturers - simple route
+app.get('/api/manufacturers', (req, res) => {
+  console.log('🏭 GET manufacturers');
+  res.json(mockData.manufacturers);
+});
 
-  // Handle API routes manually
-  if (method === 'GET') {
-    if (url === '/health') {
-      return res.json({
-        status: 'ok',
-        express: '5.x',
-        timestamp: new Date().toISOString(),
-      });
-    }
+// Actions - simple route
+app.get('/api/actions', (req, res) => {
+  console.log('🔧 GET actions');
+  res.json(mockData.actions);
+});
 
-    if (url === '/api/manufacturers') {
-      return res.json(mockData.manufacturers);
-    }
+// Devices - using query parameter to avoid route parameter issues
+app.get('/api/devices', (req, res) => {
+  const manufacturerId = req.query.manufacturerId || req.query.id;
+  console.log(`📱 GET devices for manufacturer ${manufacturerId}`);
 
-    if (url.startsWith('/api/devices/')) {
-      const id = url.split('/')[3]; // /api/devices/1 -> id = 1
-      return res.json(mockData.devices[id] || []);
-    }
-
-    if (url.startsWith('/api/actions/')) {
-      return res.json(mockData.actions);
-    }
-
-    if (url.startsWith('/api/price/')) {
-      const actionId = url.split('/')[3];
-      const price = mockData.prices[actionId];
-      if (price) {
-        return res.json({
-          price,
-          currency: '€',
-          formatted: `${price} €`,
-          message:
-            mockData.actions.find((a) => a.id == actionId)?.name || 'Reparatur',
-          actionId: parseInt(actionId),
-          dateCollected: new Date().toISOString(),
-        });
-      } else {
-        return res.json({
-          price: null,
-          message: 'Kein Preis verfügbar',
-          actionId: parseInt(actionId),
-        });
-      }
-    }
-
-    // 404 for unknown API routes
-    if (url.startsWith('/api/')) {
-      return res
-        .status(404)
-        .json({ error: 'API endpoint not found', path: url });
-    }
-
-    // SPA fallback - only for HTML pages (not static files)
-    console.log(`SPA fallback for: ${url}`);
-    const indexPath = path.join(__dirname, 'dist', 'index.html');
-    return res.sendFile(indexPath, (err) => {
-      if (err) {
-        console.error('Error serving index.html:', err);
-        res.status(500).send('Error loading page');
-      }
+  if (!manufacturerId) {
+    return res.status(400).json({
+      error: 'Missing manufacturerId parameter',
+      usage: '/api/devices?manufacturerId=1',
     });
   }
 
-  next();
+  const devices = mockData.devices[manufacturerId] || [];
+  console.log(`   Found ${devices.length} devices`);
+  res.json(devices);
 });
 
-console.log('✅ API routing configured');
+// Price - using query parameters to avoid route parameter issues
+app.get('/api/price', (req, res) => {
+  const actionId = req.query.actionId;
+  const deviceId = req.query.deviceId;
 
-// Fallback error handler
-app.use((err, req, res, _next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.log(`💰 GET price for action ${actionId}, device ${deviceId}`);
+
+  if (!actionId) {
+    return res.status(400).json({
+      error: 'Missing actionId parameter',
+      usage: '/api/price?actionId=1&deviceId=1',
+    });
+  }
+
+  if (deviceId) {
+    const priceData = calculatePrice(deviceId, actionId);
+    if (priceData) {
+      console.log(`   Price: ${priceData.formatted}`);
+      res.json(priceData);
+    } else {
+      res.status(404).json({ error: 'Price calculation failed' });
+    }
+  } else {
+    const action = mockData.actions.find((a) => a.id == actionId);
+    if (action) {
+      res.json({
+        price: action.basePrice,
+        currency: '€',
+        formatted: `${action.basePrice} €`,
+        message: action.name,
+        actionId: parseInt(actionId),
+        dateCollected: new Date().toISOString(),
+      });
+    } else {
+      res.status(404).json({ error: 'Action not found' });
+    }
+  }
 });
 
+// Debug endpoint
+app.get('/api/debug', (req, res) => {
+  console.log('🔍 Debug info');
+  res.json({
+    server: 'muchandy-api',
+    express: '5.x',
+    port: PORT,
+    pathToRegexp: '8.2.0',
+    compatibility: 'query-parameters',
+    manufacturers: mockData.manufacturers.length,
+    devices: Object.values(mockData.devices).flat().length,
+    actions: mockData.actions.length,
+    samplePrice: calculatePrice(1, 1),
+    endpoints: [
+      'GET /health',
+      'GET /api/manufacturers',
+      'GET /api/devices?manufacturerId={id}',
+      'GET /api/actions',
+      'GET /api/price?actionId={id}&deviceId={id}',
+      'GET /api/debug',
+    ],
+    testCommands: [
+      'curl http://localhost:3001/health',
+      'curl http://localhost:3001/api/manufacturers',
+      'curl "http://localhost:3001/api/devices?manufacturerId=1"',
+      'curl "http://localhost:3001/api/price?actionId=1&deviceId=1"',
+    ],
+  });
+});
+
+// 404 handler - simple route
+app.use((req, res) => {
+  console.log(`❌ 404: ${req.method} ${req.url}`);
+  res.status(404).json({
+    error: 'Endpoint not found',
+    path: req.url,
+    method: req.method,
+    availableEndpoints: [
+      '/health',
+      '/api/manufacturers',
+      '/api/devices?manufacturerId={id}',
+      '/api/actions',
+      '/api/price?actionId={id}&deviceId={id}',
+      '/api/debug',
+    ],
+  });
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log('🎉 Muchandy server with proper static files!');
-  console.log(`📱 Frontend: http://localhost:${PORT}`);
-  console.log(`🔧 API: http://localhost:${PORT}/api/manufacturers`);
+  console.log('🎉 Express 5.x Server Started Successfully!');
+  console.log(`🔧 Server: http://localhost:${PORT}`);
   console.log(`❤️ Health: http://localhost:${PORT}/health`);
+  console.log(`🔍 Debug: http://localhost:${PORT}/api/debug`);
   console.log('');
-  console.log('✅ Static files: CSS, JS, images should work now!');
-  console.log('✅ SPA routing: Works for HTML pages');
-  console.log('✅ API routes: Manual routing without path-to-regexp');
-
-  // Test static file serving
+  console.log('✅ Express 5.x + path-to-regexp 8.x compatible');
+  console.log('✅ Using query parameters instead of route parameters');
   console.log('');
-  console.log('🧪 Test your frontend:');
-  console.log('1. Check if CSS loads properly');
-  console.log('2. Check if Svarog UI components render');
-  console.log('3. Test API calls from browser console:');
+  console.log('🧪 Test commands:');
+  console.log(`   curl http://localhost:${PORT}/health`);
+  console.log(`   curl http://localhost:${PORT}/api/manufacturers`);
   console.log(
-    '   fetch("/api/manufacturers").then(r=>r.json()).then(console.log)'
+    `   curl "http://localhost:${PORT}/api/devices?manufacturerId=1"`
+  );
+  console.log(
+    `   curl "http://localhost:${PORT}/api/price?actionId=1&deviceId=1"`
   );
 });

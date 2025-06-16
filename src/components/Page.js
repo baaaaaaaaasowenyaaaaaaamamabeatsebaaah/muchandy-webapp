@@ -1,96 +1,50 @@
-// src/components/Page.js - Fixed version with manual content rendering
+// src/components/Page.js - Enhanced with global SEO service
 import { Page } from 'svarog-ui-core';
 import { renderStoryblokComponents } from './StoryblokComponent.js';
 import { storyblok } from '../services/storyblok.js';
+import { seoService } from '../services/seoService.js';
 
-console.log('=== FIXED PAGE.JS LOADING ===');
+console.log('=== PAGE.JS WITH SEO SERVICE ===');
 
 const createPage = () => {
-  console.log('Creating fixed page instance...');
+  console.log('Creating page with global SEO service...');
 
   let currentStory = null;
   let pageComponent = null;
 
-  // Transform Storyblok story to Svarog Page configuration - KISS principle
-  const transformStoryToPageConfig = (story) => {
-    console.log('Transforming story to page config:', story);
+  // Transform story to page config with global SEO - KISS principle
+  const transformStoryToPageConfig = async (story) => {
+    console.log('Transforming story with global SEO:', story);
 
-    // Pre-render the Storyblok components
+    // Pre-render Storyblok components
     let renderedContent = null;
-    if (story.content?.body && story.content.body.length > 0) {
-      console.log('Rendering Storyblok components:', story.content.body);
+    if (story.content?.body?.length > 0) {
       try {
         renderedContent = renderStoryblokComponents(story.content.body);
-        console.log('✅ Components rendered successfully:', renderedContent);
+        console.log('✅ Components rendered successfully');
       } catch (error) {
-        console.error('❌ Error rendering components:', error);
+        console.error('❌ Component rendering failed:', error);
       }
     }
+
+    // Create enhanced SEO using global service - Algorithmic Elegance
+    const enhancedSEO = await seoService.createPageSEO({
+      slug: story.slug,
+      title: story.name,
+      seo_title: story.content?.seo_title,
+      seo_description: story.content?.seo_description,
+      seo_keywords: story.content?.seo_keywords,
+      seo_image: story.content?.seo_image,
+    });
 
     const config = {
       id: story.slug,
       type: 'page',
 
-      // Enhanced SEO from Storyblok content
-      seo: {
-        title:
-          story.content?.seo_title ||
-          story.name ||
-          'Muchandy - Premium Mobile Solutions',
-        description:
-          story.content?.seo_description ||
-          'Professionelle Handy-Reparaturen und Premium-Geräte bei Muchandy in München',
-        keywords: story.content?.seo_keywords || [
-          'muchandy',
-          'handy reparatur',
-          'smartphone',
-          'münchen',
-        ],
-        canonicalUrl: `https://muchandy.de/${story.slug === 'home' ? '' : story.slug}`,
-        lang: 'de',
+      // Enhanced SEO from global service
+      seo: enhancedSEO,
 
-        // Favicon configuration for Muchandy
-        favicon: {
-          basePath: '/favicon',
-          format: 'png',
-        },
-
-        // PWA configuration for Muchandy
-        pwa: {
-          appName: 'Muchandy',
-          themeColor: '#ff7f50', // Muchandy brand orange
-          backgroundColor: '#ffffff',
-          manifestUrl: '/site.webmanifest',
-        },
-
-        // Open Graph for social sharing
-        openGraph: {
-          title: story.content?.seo_title || story.name,
-          description:
-            story.content?.seo_description ||
-            'Premium Mobile Solutions bei Muchandy',
-          image:
-            story.content?.seo_image?.filename ||
-            'https://muchandy.de/og-image.jpg',
-          type: 'website',
-          url: `https://muchandy.de/${story.slug === 'home' ? '' : story.slug}`,
-          siteName: 'Muchandy',
-        },
-
-        // Twitter Card
-        twitterCard: {
-          card: 'summary_large_image',
-          title: story.content?.seo_title || story.name,
-          description:
-            story.content?.seo_description ||
-            'Premium Mobile Solutions bei Muchandy',
-          image:
-            story.content?.seo_image?.filename ||
-            'https://muchandy.de/og-image.jpg',
-        },
-      },
-
-      // Pass the pre-rendered content directly as HTML
+      // Pass rendered content as HTML
       content: renderedContent
         ? {
             html: renderedContent.outerHTML || renderedContent.innerHTML || '',
@@ -106,91 +60,22 @@ const createPage = () => {
       },
     };
 
-    // Add local business schema for Muchandy (SMB focus) - if home or contact page
-    if (story.slug === 'home' || story.slug === 'kontakt') {
-      config.seo.localBusiness = {
-        name: 'Muchandy',
-        businessType: 'Electronics Store',
-        description:
-          'Premium Handy-Reparaturen und Smartphone-Verkauf in München',
-        address: {
-          street: 'Sendlinger Str. 7',
-          city: 'München',
-          state: 'Bayern',
-          zip: '80331',
-          country: 'DE',
-        },
-        phone: '+49 89 26949777',
-        email: 'info@muchandy.de',
-        url: 'https://muchandy.de',
-        geo: {
-          latitude: 48.1351,
-          longitude: 11.582,
-        },
-        openingHours: [
-          { day: 'Monday', open: '10:00', close: '19:00' },
-          { day: 'Tuesday', open: '10:00', close: '19:00' },
-          { day: 'Wednesday', open: '10:00', close: '19:00' },
-          { day: 'Thursday', open: '10:00', close: '19:00' },
-          { day: 'Friday', open: '10:00', close: '19:00' },
-          { day: 'Saturday', open: '10:00', close: '18:00' },
-        ],
-        services: [
-          'Handy Reparatur',
-          'Display Reparatur',
-          'Akku Tausch',
-          'Smartphone Verkauf',
-          'Gebrauchte Handys',
-        ],
-      };
-
-      // Add FAQ data for rich snippets
-      config.seo.faqs = [
-        {
-          question: 'Welche Handy-Reparaturen bieten Sie an?',
-          answer:
-            'Wir reparieren Displays, tauschen Akkus, reparieren Kameras und beheben Software-Probleme für alle gängigen Smartphone-Marken.',
-        },
-        {
-          question: 'Wie lange dauert eine Reparatur?',
-          answer:
-            'Die meisten Reparaturen können am selben Tag durchgeführt werden. Komplexere Reparaturen dauern 1-2 Werktage.',
-        },
-        {
-          question: 'Bieten Sie Garantie auf Reparaturen?',
-          answer:
-            'Ja, wir geben 6 Monate Garantie auf alle Reparaturen und verwendeten Ersatzteile.',
-        },
-        {
-          question: 'Kaufen Sie auch defekte Handys an?',
-          answer:
-            'Ja, wir kaufen defekte und gebrauchte Handys zu fairen Preisen an. Nutzen Sie unseren Online-Preisrechner für eine sofortige Bewertung.',
-        },
-      ];
-    }
-
-    console.log(
-      '✅ Story transformed to enhanced page config with rendered content:',
-      config
-    );
+    console.log('✅ Story transformed with enhanced SEO:', config);
     return config;
   };
 
-  // Load story and create/update page - Algorithmic Elegance
+  // Load story and create page with global SEO - Economy of Expression
   const loadStory = async (slug) => {
-    console.log(`=== LOADING STORY WITH FIXED SVAROG PAGE: ${slug} ===`);
+    console.log(`=== LOADING STORY WITH GLOBAL SEO: ${slug} ===`);
 
     try {
       // Set loading state
       if (pageComponent) {
-        console.log('Setting loading state on existing page...');
         pageComponent.setLoading(true, {
           message: 'Inhalt wird geladen...',
           showSpinner: true,
         });
       } else {
-        // Create page with initial loading state
-        console.log('Creating new page with loading state...');
         pageComponent = Page({
           id: `muchandy-page-${slug}`,
           loading: true,
@@ -201,35 +86,35 @@ const createPage = () => {
         });
       }
 
-      // Load from Storyblok
+      // Load story and transform with global SEO
       console.log('Fetching story from Storyblok...');
       const story = await storyblok.getStory(slug);
       console.log('✅ Story loaded:', story);
 
       currentStory = story;
 
-      // Transform and load into page
-      console.log('Transforming story to page config...');
-      const pageConfig = transformStoryToPageConfig(story);
+      // Transform with enhanced SEO
+      console.log('Transforming with global SEO...');
+      const pageConfig = await transformStoryToPageConfig(story);
 
-      // Load content into the enhanced page component
-      console.log('Loading content into page component...');
+      // Load content into page component
+      console.log('Loading content into page...');
       pageComponent.loadFromCMS(pageConfig);
 
-      // Setup enhanced SEO with all the Muchandy business data
-      console.log('Setting up enhanced SEO...');
+      // Apply enhanced SEO
+      console.log('Applying enhanced SEO...');
       pageComponent.updateSEO(pageConfig.seo);
       pageComponent.renderSEO();
 
-      // Optimize page performance
+      // Optimize page
       pageComponent.optimize();
 
-      console.log('✅ Fixed page updated with story content and SEO');
+      console.log('✅ Page loaded with global SEO configuration');
       return story;
     } catch (error) {
       console.error(`❌ Failed to load story "${slug}":`, error);
 
-      // Set error state with German text
+      // Set error state
       if (pageComponent) {
         pageComponent.setError({
           title: 'Seite nicht gefunden',
@@ -244,19 +129,18 @@ const createPage = () => {
   };
 
   return {
-    // Get the DOM element from Svarog Page component
+    // Get DOM element from page component
     getElement() {
       if (!pageComponent) {
-        console.warn('Fixed page component not initialized');
+        console.warn('Page component not initialized');
         return document.createElement('div');
       }
       return pageComponent.getElement();
     },
 
-    // Load story and update page
+    // Load story with global SEO
     async loadStory(slug) {
-      const story = await loadStory(slug);
-      return story;
+      return await loadStory(slug);
     },
 
     // Get current story
@@ -264,64 +148,30 @@ const createPage = () => {
       return currentStory;
     },
 
-    // Get page state from enhanced component
+    // Get page state with SEO info
     getState() {
-      return pageComponent ? pageComponent.getState() : {};
+      const baseState = pageComponent ? pageComponent.getState() : {};
+      return {
+        ...baseState,
+        story: currentStory
+          ? {
+              slug: currentStory.slug,
+              name: currentStory.name,
+              hasContent: !!currentStory.content?.body?.length,
+            }
+          : null,
+        seoEnhanced: true, // Indicates global SEO is being used
+      };
     },
 
-    // Update page
-    update(props) {
-      if (pageComponent) {
-        pageComponent.update(props);
-      }
-    },
-
-    // Destroy page and cleanup
-    destroy() {
-      console.log('Destroying fixed page...');
-      if (pageComponent) {
-        pageComponent.destroy();
-        pageComponent = null;
-      }
-      currentStory = null;
-    },
-
-    // Enhanced methods from Svarog Page component
-    setLoading(loading, options) {
-      if (pageComponent) {
-        pageComponent.setLoading(loading, options);
-      }
-      return this;
-    },
-
-    setError(error) {
-      if (pageComponent) {
-        pageComponent.setError(error);
-      }
-      return this;
-    },
-
-    setContent(content) {
-      if (pageComponent) {
-        pageComponent.setContent(content);
-      }
-      return this;
-    },
-
-    updateSEO(seoData) {
-      if (pageComponent) {
-        pageComponent.updateSEO(seoData);
-      }
-      return this;
-    },
-
-    // Performance optimization
-    optimize() {
-      if (pageComponent) {
-        pageComponent.optimize();
-      }
-      return this;
-    },
+    // Enhanced page methods - Maximum Conciseness
+    update: (props) => pageComponent?.update(props),
+    setLoading: (loading, options) =>
+      pageComponent?.setLoading(loading, options),
+    setError: (error) => pageComponent?.setError(error),
+    setContent: (content) => pageComponent?.setContent(content),
+    updateSEO: (seoData) => pageComponent?.updateSEO(seoData),
+    optimize: () => pageComponent?.optimize(),
 
     // Accessibility validation
     validateAccessibility() {
@@ -330,41 +180,47 @@ const createPage = () => {
         : { valid: false, issues: ['Page not initialized'] };
     },
 
-    // Additional methods for Muchandy-specific functionality
-    setupMuchandyBusiness() {
-      if (pageComponent && currentStory) {
-        const businessConfig = {
-          business: {
-            name: 'Muchandy',
-            businessType: 'Electronics Store',
-            phone: '+49 89 26949777',
-            email: 'info@muchandy.de',
-          },
-        };
-        pageComponent.setupSMB?.(businessConfig);
+    // Refresh page with latest global SEO
+    async refresh() {
+      if (currentStory) {
+        console.log('🔄 Refreshing page with latest global SEO...');
+        await seoService.refresh();
+        await loadStory(currentStory.slug);
+        console.log('✅ Page refreshed with latest SEO');
       }
-      return this;
+    },
+
+    // Enhanced destroy with proper cleanup
+    destroy() {
+      console.log('Destroying page with global SEO...');
+
+      if (pageComponent) {
+        pageComponent.destroy();
+        pageComponent = null;
+      }
+
+      currentStory = null;
+      console.log('✅ Page destroyed');
     },
 
     // Debug method for development
     debug() {
-      console.log('=== MUCHANDY PAGE DEBUG ===');
+      console.log('=== MUCHANDY PAGE DEBUG (Enhanced SEO) ===');
       console.log('Current story:', currentStory);
       console.log('Page component state:', pageComponent?.getState());
       console.log('Accessibility:', this.validateAccessibility());
-      console.log(
-        'Page element content:',
-        pageComponent?.getElement()?.innerHTML
-      );
+      console.log('SEO service cache:', seoService.cache);
+
       return {
         story: currentStory,
         pageState: pageComponent?.getState(),
         accessibility: this.validateAccessibility(),
+        seoCache: seoService.cache,
         element: pageComponent?.getElement(),
       };
     },
   };
 };
 
-console.log('✅ Fixed Muchandy Page factory created using Svarog-UI');
+console.log('✅ Enhanced Page with Global SEO Service ready');
 export default createPage;
