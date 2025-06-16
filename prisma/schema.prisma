@@ -1,4 +1,4 @@
-// prisma/schema.prisma - Ultra-simple schema
+// prisma/schema.prisma - Fixed with Action unique constraint
 generator client {
   provider = "prisma-client-js"
 }
@@ -30,6 +30,8 @@ model Action {
   device   Device  @relation(fields: [deviceId], references: [id])
   deviceId Int
   prices   Price[]
+  
+  @@unique([name, deviceId])  // ← This was missing!
 }
 
 model Price {
