@@ -15,8 +15,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev) for building
+RUN npm ci
 
 # Copy application code
 COPY . .
@@ -51,13 +51,15 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
+# Copy package files and install only production dependencies
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --only=production && npx prisma generate
+
 # Copy built application from builder stage
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/server.js ./
-COPY --from=builder --chown=nodejs:nodejs /app/src ./src
+COPY --chown=nodejs:nodejs server.js ./
+COPY --chown=nodejs:nodejs src ./src
 
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
