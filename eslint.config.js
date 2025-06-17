@@ -17,6 +17,8 @@ export default [
         getComputedStyle: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        Intl: 'readonly',
+        fetch: 'readonly',
 
         // Node.js (for config files)
         process: 'readonly',

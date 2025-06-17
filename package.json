@@ -41,12 +41,12 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.9.0",
-    "@svarog-ui/theme-muchandy": "^1.9.4",
+    "@svarog-ui/theme-muchandy": "^1.9.6",
     "express": "^5.1.0",
     "prisma": "^6.9.0",
     "puppeteer": "^24.10.1",
     "storyblok-js-client": "^6.0.0",
-    "svarog-ui-core": "^2.7.8"
+    "svarog-ui-core": "^2.7.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

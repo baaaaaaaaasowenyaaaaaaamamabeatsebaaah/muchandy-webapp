@@ -1,114 +1,212 @@
-// src/components/App.js - Enhanced with phased initialization
-import { createElement, CollapsibleHeader, Footer } from 'svarog-ui-core';
+// src/components/App.js
+/**
+ * @file Enhanced App component with phased initialization
+ * @description Main application container with service coordination
+ */
+
+import {
+  createElement,
+  CollapsibleHeaderContainer,
+  Footer,
+} from 'svarog-ui-core';
 import { MuchandyComponent } from './MuchandyComponent.js';
-import { router } from '../utils/router.js';
-import { serviceCoordinator } from '../utils/serviceCoordinator.js';
 import { appState } from '../utils/stateStore.js';
 import { LoadPriority } from '../utils/priorityLoader.js';
-import createPage from './Page.js';
 
 console.log('=== ENHANCED APP WITH PHASED INITIALIZATION ===');
 
-// Enhanced App with proper initialization sequence - KISS principle
+/**
+ * Enhanced App with proper initialization phases
+ */
 class EnhancedApp extends MuchandyComponent {
   constructor(props = {}) {
-    super(props);
+    super({ ...props, componentType: 'EnhancedApp' });
 
-    // App-specific state
-    this.state = {
-      initialized: false,
-      phase: 'not-started',
-      error: null,
-    };
-
-    // Component references
+    this.coordinator = new ServiceCoordinator();
+    this.router = null;
     this.currentPage = null;
-    this.pageContainer = null;
+    this.element = null;
+
+    // UI references
     this.header = null;
     this.footer = null;
-
-    console.log('🚀 Enhanced App created');
+    this.pageContainer = null;
   }
 
-  // === LIFECYCLE METHODS ===
-
-  // Phase 1: Critical setup
-  async beforeLoad() {
+  /**
+   * Phase 1: Critical setup
+   */
+  async initializeCritical() {
     console.log('📋 App Phase 1: Critical setup...');
+    this.updateState({ phase: 'critical-setup' });
 
-    try {
-      this.setState({ phase: 'critical-setup' });
+    // Register all services with proper dependencies and priorities
+    this.registerServices();
 
-      // Register all services with coordinator
-      this.registerServices();
+    // Wait for critical services
+    await this.coordinator.loader.waitForPriority(LoadPriority.CRITICAL);
 
-      // Initialize critical services (theme)
-      await serviceCoordinator.waitForPriority(LoadPriority.CRITICAL);
-
-      console.log('✅ Critical setup complete');
-    } catch (error) {
-      console.error('❌ Critical setup failed:', error);
-      throw error;
-    }
+    console.log('✅ Critical setup complete');
   }
 
-  // Phase 2: Load global services
-  async load() {
-    console.log('📊 App Phase 2: Loading global services...');
+  /**
+   * Register all services
+   */
+  registerServices() {
+    console.log('📝 Registering services...');
 
-    try {
-      this.setState({ phase: 'loading-services' });
+    // Theme service (CRITICAL - needed before any UI)
+    this.coordinator.register(
+      'theme',
+      {
+        load: async () => {
+          console.log('  Creating theme instance...');
+          appState.set('services.theme.loading', true);
 
-      // Load all services
-      const results = await serviceCoordinator.loadAll();
+          try {
+            const { default: theme } = await import(
+              '@svarog-ui/theme-muchandy'
+            );
+            theme.apply();
 
-      // Check for critical failures
-      const criticalServices = ['storyblok', 'header', 'footer'];
-      const failures = criticalServices.filter(
-        (name) =>
-          results[name]?.error || !appState.get(`services.${name}.ready`)
-      );
-
-      if (failures.length > 0) {
-        throw new Error(`Critical services failed: ${failures.join(', ')}`);
-      }
-
-      console.log('✅ All services loaded successfully');
-    } catch (error) {
-      console.error('❌ Service loading failed:', error);
-      this.setState({
-        error: {
-          phase: 'services',
-          message: error.message,
+            appState.set('services.theme.instance', theme);
+            appState.set('services.theme.ready', true);
+          } finally {
+            appState.set('services.theme.loading', false);
+          }
         },
-      });
-      throw error;
-    }
+      },
+      [],
+      LoadPriority.CRITICAL
+    );
+
+    // Storyblok service (HIGH - needed for header/footer)
+    this.coordinator.register(
+      'storyblok',
+      {
+        load: async () => {
+          console.log('  Creating storyblok instance...');
+          appState.set('services.storyblok.loading', true);
+
+          const { storyblok } = await import('../services/storyblok.js');
+
+          appState.set('services.storyblok.instance', storyblok);
+          appState.set('services.storyblok.ready', true);
+          appState.set('services.storyblok.loading', false);
+        },
+      },
+      [],
+      LoadPriority.HIGH
+    );
+
+    // API service (HIGH - needed for forms)
+    this.coordinator.register(
+      'api',
+      {
+        load: async () => {
+          console.log('  Creating api instance...');
+          appState.set('services.api.loading', true);
+
+          const { apiService } = await import('../services/apiService.js');
+          await apiService.load();
+
+          appState.set('services.api.instance', apiService);
+          appState.set('services.api.ready', true);
+          appState.set('services.api.loading', false);
+        },
+      },
+      [],
+      LoadPriority.HIGH
+    );
+
+    // Header service (HIGH - but depends on storyblok)
+    this.coordinator.register(
+      'header',
+      {
+        load: async () => {
+          console.log('  Creating header instance...');
+          appState.set('services.header.loading', true);
+
+          const { headerService } = await import(
+            '../services/headerService.js'
+          );
+          await headerService.load();
+
+          appState.set('services.header.instance', headerService);
+          appState.set('services.header.ready', true);
+          appState.set('services.header.loading', false);
+        },
+      },
+      ['storyblok'],
+      LoadPriority.HIGH
+    );
+
+    // Footer service (HIGH - but depends on storyblok)
+    this.coordinator.register(
+      'footer',
+      {
+        load: async () => {
+          console.log('  Creating footer instance...');
+          appState.set('services.footer.loading', true);
+
+          const { footerService } = await import(
+            '../services/footerService.js'
+          );
+          await footerService.load();
+
+          appState.set('services.footer.instance', footerService);
+          appState.set('services.footer.ready', true);
+          appState.set('services.footer.loading', false);
+        },
+      },
+      ['storyblok'],
+      LoadPriority.HIGH
+    );
+
+    // SEO service (NORMAL - depends on storyblok)
+    this.coordinator.register(
+      'seo',
+      {
+        load: async () => {
+          console.log('  Creating seo instance...');
+          appState.set('services.seo.loading', true);
+
+          const { seoService } = await import('../services/seoService.js');
+          await seoService.load();
+
+          appState.set('services.seo.instance', seoService);
+          appState.set('services.seo.ready', true);
+          appState.set('services.seo.loading', false);
+        },
+      },
+      ['storyblok'],
+      LoadPriority.NORMAL
+    );
+
+    console.log('✅ All services registered');
   }
 
-  // Phase 3: Create UI structure
-  async beforeRender() {
+  /**
+   * Phase 2: Load global services
+   */
+  async loadGlobalServices() {
+    console.log('📊 App Phase 2: Loading global services...');
+    this.updateState({ phase: 'loading-services' });
+
+    await this.coordinator.loadAll();
+
+    console.log('✅ All services loaded successfully');
+  }
+
+  /**
+   * Phase 3: Create UI structure
+   */
+  async createUIStructure() {
     console.log('🎯 App Phase 3: Creating UI structure...');
+    this.updateState({ phase: 'creating-ui' });
 
-    this.setState({ phase: 'creating-ui' });
-
-    // Get configurations from services
-    this.headerConfig = appState.get('header.config');
-    this.footerConfig = appState.get('footer.config');
-
-    if (!this.headerConfig || !this.footerConfig) {
-      throw new Error('Header or footer configuration not available');
-    }
-
-    console.log('✅ UI structure prepared');
-  }
-
-  // Render the app - Algorithmic Elegance
-  render() {
-    console.log('🎨 Rendering app structure');
-
-    // Create app container
-    const app = createElement('div', {
+    // Create the basic app structure
+    this.element = createElement('div', {
       className: 'app',
       style: {
         display: 'flex',
@@ -117,412 +215,237 @@ class EnhancedApp extends MuchandyComponent {
       },
     });
 
-    // Create and add header
-    this.header = this.createHeader();
-    app.appendChild(this.header.getElement());
-
-    // Create main content area
-    const main = createElement('main', {
-      className: 'app-main',
-      style: { flex: '1' },
-    });
-
-    // Create page container
+    // Create page container (content will be added later)
     this.pageContainer = createElement('div', {
       className: 'app-content',
-      style: { width: '100%', minHeight: '50vh' },
+      style: { flex: '1', width: '100%' },
     });
 
-    // Add loading message initially
-    this.pageContainer.innerHTML = `
-      <div class="page-loading" style="
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 50vh;
-        font-size: 1.2rem;
-        color: var(--color-primary, #ff7f50);
-      ">
-        <span class="loading-spinner">⏳ Seite wird geladen...</span>
-      </div>
-    `;
+    const main = createElement('main', {
+      className: 'app-main',
+      style: { flex: '1', display: 'flex', flexDirection: 'column' },
+      children: [this.pageContainer],
+    });
 
-    main.appendChild(this.pageContainer);
-    app.appendChild(main);
+    this.element.appendChild(main);
 
-    // Create and add footer
-    this.footer = this.createFooter();
-    app.appendChild(this.footer.getElement());
-
-    return app;
+    console.log('✅ UI structure prepared');
   }
 
-  // Phase 4: Post-initialization
+  /**
+   * Load implementation
+   */
+  async load() {
+    // Phase 1: Critical setup
+    await this.initializeCritical();
+
+    // Phase 2: Load services
+    await this.loadGlobalServices();
+
+    // Phase 3: Create UI structure
+    await this.createUIStructure();
+  }
+
+  /**
+   * Render the app
+   */
+  render() {
+    console.log('🎨 Rendering app structure');
+
+    // Header
+    const headerConfig = appState.get('header.config');
+    if (headerConfig) {
+      this.header = this.createHeader(headerConfig);
+      this.element.insertBefore(this.header, this.element.firstChild);
+    }
+
+    // Footer
+    const footerConfig = appState.get('footer.config');
+    if (footerConfig) {
+      this.footer = this.createFooter(footerConfig);
+      this.element.appendChild(this.footer);
+    }
+
+    return this.element;
+  }
+
+  /**
+   * After render - set up routing
+   */
   async afterRender() {
+    await this.initializeRouting();
+  }
+
+  /**
+   * Post initialization
+   */
+  async mounted() {
     console.log('✨ App Phase 4: Post-initialization...');
+    this.updateState({ phase: 'post-init' });
 
-    this.setState({ phase: 'post-init' });
+    // Set up state watchers
+    this.setupStateWatchers();
 
-    // Set up global error handling
-    this.setupErrorHandling();
-
-    // Track app state
+    // Mark app as initialized
     appState.set('app.initialized', true);
-    appState.set('app.startTime', Date.now());
+    appState.set('app.loadTime', Date.now() - appState.get('app.startTime'));
   }
 
-  // Phase 5: Initialize routing after mount
-  async onMount() {
-    console.log('🚀 App Phase 5: Initialize routing...');
+  /**
+   * Initialize routing
+   */
+  async initializeRouting() {
+    const { router } = await import('../utils/router.js');
+    this.router = router;
 
-    this.setState({ phase: 'routing-init' });
+    // Set up routes
+    router.addRoute('/', this.handleRoute.bind(this));
+    router.addRoute('*', this.handleRoute.bind(this));
 
-    // Initialize routing
-    this.initializeRouting();
-
-    // Mark as fully initialized
-    this.setState({
-      initialized: true,
-      phase: 'ready',
-    });
-
-    console.log('✅ App fully initialized and ready!');
+    // Start routing
+    router.start();
   }
 
-  // === SERVICE REGISTRATION ===
+  /**
+   * Handle route changes
+   */
+  async handleRoute(path) {
+    try {
+      appState.set('app.routing', true);
 
-  // Register all services with coordinator - Economy of Expression
-  registerServices() {
-    console.log('📝 Registering services...');
+      // Clean up current page
+      if (this.currentPage) {
+        await this.currentPage.destroy();
+      }
 
-    // Theme service (CRITICAL)
-    serviceCoordinator.register('theme', {
-      factory: async () => {
-        const themeModule = await import('@svarog-ui/theme-muchandy');
-        const theme = themeModule.default || themeModule.muchandyTheme;
-        theme.apply();
-        return theme;
-      },
-      priority: LoadPriority.CRITICAL,
-    });
+      // Create new page
+      const { EnhancedPage } = await import('./Page.js');
+      const slug = path === '/' ? 'home' : path.substring(1);
 
-    // Storyblok service (HIGH)
-    serviceCoordinator.register('storyblok', {
-      factory: async () => {
-        const { storyblok } = await import('../services/storyblok.js');
-        await storyblok.load();
-        return storyblok;
-      },
-      priority: LoadPriority.HIGH,
-    });
+      this.currentPage = new EnhancedPage({ slug });
+      const pageElement = await this.currentPage.getElement();
 
-    // API service (HIGH)
-    serviceCoordinator.register('api', {
-      factory: async () => {
-        const ApiService = (await import('../services/apiService.js')).default;
-        const api = new ApiService();
-        await api.load();
-        return api;
-      },
-      priority: LoadPriority.HIGH,
-    });
+      // Update container
+      this.pageContainer.innerHTML = '';
+      this.pageContainer.appendChild(pageElement);
 
-    // Header service (HIGH)
-    serviceCoordinator.register('header', {
-      factory: async () => {
-        const { headerService } = await import('../services/headerService.js');
-        await headerService.load();
-        return headerService;
-      },
-      dependencies: ['storyblok'],
-      priority: LoadPriority.HIGH,
-    });
-
-    // Footer service (HIGH)
-    serviceCoordinator.register('footer', {
-      factory: async () => {
-        const { footerService } = await import('../services/footerService.js');
-        await footerService.load();
-        return footerService;
-      },
-      dependencies: ['storyblok'],
-      priority: LoadPriority.HIGH,
-    });
-
-    // SEO service (NORMAL)
-    serviceCoordinator.register('seo', {
-      factory: async () => {
-        const { seoService } = await import('../services/seoService.js');
-        await seoService.load();
-        return seoService;
-      },
-      dependencies: ['storyblok'],
-      priority: LoadPriority.NORMAL,
-    });
-
-    console.log('✅ All services registered');
+      appState.set('app.currentPage', slug);
+      appState.set('app.routing', false);
+    } catch (error) {
+      console.error('Route handling failed:', error);
+      this.showErrorPage(error);
+    }
   }
 
-  // === UI CREATION ===
-
-  // Create header with loaded config - Maximum Conciseness
-  createHeader() {
+  /**
+   * Create header component
+   */
+  createHeader(config) {
     console.log('🎨 Creating header from config...');
 
-    const config = this.headerConfig;
-
-    return CollapsibleHeader({
-      ...config,
-      onCallClick: () => {
-        const phone = config.contactInfo?.phone?.replace(/\s/g, '');
-        if (phone) window.location.href = `tel:${phone}`;
+    const header = CollapsibleHeaderContainer({
+      siteName: config.siteName,
+      logo: {
+        imageUrl: config.logo,
+        alt: config.siteName,
+        fallbackImageUrl: config.compactLogo,
+      },
+      navigation: {
+        items: config.navigation.items,
+        ctaButton: config.navigation.ctaButton,
+      },
+      contactInfo: config.contactInfo,
+      mobileMenuButton: {
+        variant: 'icon',
+        icon: '☰',
+        ariaLabel: 'Toggle mobile menu',
       },
     });
+
+    return header.getElement();
   }
 
-  // Create footer with loaded config
-  createFooter() {
+  /**
+   * Create footer component
+   */
+  createFooter(config) {
     console.log('🎨 Creating footer from config...');
 
-    return Footer(this.footerConfig);
+    const footer = Footer({
+      siteName: config.siteName,
+      description: config.description,
+      contact: config.contact,
+      address: config.address,
+      socialLinks: config.socialLinks,
+      legalLinks: config.legalLinks,
+      openingHours: config.openingHours,
+    });
+
+    return footer.getElement();
   }
 
-  // === ROUTING ===
-
-  // Initialize routing - KISS principle
-  initializeRouting() {
-    console.log('🔄 Initializing routing...');
-
-    // Route handler
-    const handleRoute = async (path) => {
-      console.log(`📍 Handling route: ${path}`);
-
-      try {
-        // Update app state
-        appState.set('app.routing', true);
-        appState.set('app.currentPath', path);
-
-        // Clean up current page
-        if (this.currentPage) {
-          await this.currentPage.destroy();
-          this.currentPage = null;
-        }
-
-        // Show loading
-        this.showPageLoading();
-
-        // Create new page
-        const slug = path === '/' ? 'home' : path.substring(1);
-        this.currentPage = createPage({ slug });
-
-        // Load and mount page
-        const pageElement = await this.currentPage.getElement();
-
-        // Replace content
-        this.pageContainer.innerHTML = '';
-        this.pageContainer.appendChild(pageElement);
-
-        // Update state
-        appState.set('app.routing', false);
-
-        console.log('✅ Route handled successfully');
-      } catch (error) {
-        console.error('❌ Route handling failed:', error);
-        this.showErrorPage(error);
-        appState.set('app.routing', false);
+  /**
+   * Set up state watchers
+   */
+  setupStateWatchers() {
+    // Watch for header config changes
+    this.watchState('header.config', (config) => {
+      if (config && this.header) {
+        const newHeader = this.createHeader(config);
+        this.header.parentNode.replaceChild(newHeader, this.header);
+        this.header = newHeader;
       }
-    };
-
-    // Register routes
-    router.addRoute('/', handleRoute);
-    router.addRoute('*', handleRoute);
-
-    // Start router
-    router.start();
-
-    console.log('✅ Routing initialized');
-  }
-
-  // === ERROR HANDLING ===
-
-  // Setup global error handling - Algorithmic Elegance
-  setupErrorHandling() {
-    // Handle unhandled promise rejections
-    window.addEventListener('unhandledrejection', (event) => {
-      console.error('Unhandled promise rejection:', event.reason);
-
-      appState.set('app.errors', [
-        ...(appState.get('app.errors') || []),
-        {
-          type: 'unhandledRejection',
-          error: event.reason,
-          timestamp: Date.now(),
-        },
-      ]);
     });
 
-    // Handle global errors
-    window.addEventListener('error', (event) => {
-      console.error('Global error:', event.error);
-
-      appState.set('app.errors', [
-        ...(appState.get('app.errors') || []),
-        {
-          type: 'globalError',
-          error: event.error,
-          timestamp: Date.now(),
-        },
-      ]);
+    // Watch for footer config changes
+    this.watchState('footer.config', (config) => {
+      if (config && this.footer) {
+        const newFooter = this.createFooter(config);
+        this.footer.parentNode.replaceChild(newFooter, this.footer);
+        this.footer = newFooter;
+      }
     });
   }
 
-  // Show page loading state
-  showPageLoading() {
+  /**
+   * Show error page
+   */
+  showErrorPage(error) {
     this.pageContainer.innerHTML = `
-      <div class="page-loading" style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 50vh;
-        text-align: center;
-      ">
-        <div class="loading-spinner" style="
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          animation: spin 1s linear infinite;
-        ">⏳</div>
-        <p style="
-          font-size: 1.1rem;
-          color: var(--color-text-secondary, #666);
-        ">Seite wird geladen...</p>
+      <div style="padding: 40px; text-align: center;">
+        <h1>Page Load Error</h1>
+        <p>${error.message}</p>
+        <button onclick="window.location.reload()">Reload</button>
       </div>
-      <style>
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      </style>
     `;
   }
 
-  // Show error page - Economy of Expression
-  showErrorPage(error) {
-    const errorPage = createPage();
-    errorPage.setError({
-      title: 'Fehler',
-      message: error.message || 'Ein unerwarteter Fehler ist aufgetreten.',
-      code: error.status || 500,
-    });
-
-    this.pageContainer.innerHTML = '';
-    this.currentPage = errorPage;
-
-    errorPage.getElement().then((element) => {
-      this.pageContainer.appendChild(element);
-    });
-  }
-
-  // === PUBLIC API ===
-
-  getCurrentPage() {
-    return this.currentPage;
-  }
-
-  async navigate(path) {
-    router.navigate(path);
-  }
-
-  updatePage(props) {
-    this.currentPage?.update(props);
-  }
-
-  async refreshServices() {
-    console.log('🔄 Refreshing all services...');
-
-    const services = ['header', 'footer', 'seo'];
-    for (const name of services) {
-      const service = serviceCoordinator.get(name);
-      if (service?.refresh) {
-        await service.refresh();
-      }
-    }
-
-    // Re-render header and footer if needed
-    if (this.header) {
-      const newConfig = appState.get('header.config');
-      this.header.update(newConfig);
-    }
-
-    if (this.footer) {
-      const newConfig = appState.get('footer.config');
-      this.footer.update(newConfig);
-    }
-  }
-
-  getAppState() {
-    return {
-      ...this.state,
-      currentPath: router.getCurrentPath(),
-      pageState: this.currentPage?.getState(),
-      services: serviceCoordinator.getStats(),
-      errors: appState.get('app.errors') || [],
-    };
-  }
-
-  // === CLEANUP ===
-
-  async beforeDestroy() {
-    console.log('⚠️ App cleanup starting...');
-
-    // Destroy current page
-    if (this.currentPage) {
-      await this.currentPage.destroy();
-      this.currentPage = null;
-    }
-
-    // Clear services
-    serviceCoordinator.clear();
+  /**
+   * Get the app element
+   */
+  getElement() {
+    return this.element || this.init();
   }
 }
 
-// Factory function for app creation - Maximum Conciseness
-const createApp = () => {
-  const app = new EnhancedApp();
-
-  return {
-    async getElement() {
-      return app.getElement();
-    },
-
-    getCurrentPage: () => app.getCurrentPage(),
-    navigate: (path) => app.navigate(path),
-    updatePage: (props) => app.updatePage(props),
-    getState: () => app.getAppState(),
-    refreshServices: () => app.refreshServices(),
-    destroy: () => app.destroy(),
-    debug: () => app.debug(),
-  };
-};
-
-// Development helpers
-if (import.meta.env.DEV) {
+// Export for development
+if (typeof window !== 'undefined') {
   window.EnhancedApp = EnhancedApp;
-
-  // Debug app initialization phases
   window.debugAppInit = () => {
-    console.group('🔍 App Initialization Debug');
-    console.log('Services:', serviceCoordinator.getStats());
+    console.log('=== APP INITIALIZATION DEBUG ===');
+    console.log('Services:', appState.get('services'));
     console.log('App State:', appState.get('app'));
-    console.log('Current Phase:', appState.get('components')?.app?.status);
-    console.groupEnd();
+    console.log('Components:', appState.get('components'));
+    console.log('================================');
   };
 
   console.log('🔧 Enhanced App development helpers:');
-  console.log('  - window.EnhancedApp - App class');
-  console.log('  - window.debugAppInit() - Debug initialization');
+  console.log('   - window.EnhancedApp - App class');
+  console.log('   - window.debugAppInit() - Debug initialization');
 }
 
-console.log('✅ Enhanced App with phased initialization ready');
+// Export the class
+export { EnhancedApp };
+export default EnhancedApp;
 
-export default createApp;
+console.log('✅ Enhanced App with phased initialization ready');

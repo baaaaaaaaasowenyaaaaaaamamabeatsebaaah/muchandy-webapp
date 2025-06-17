@@ -1,6 +1,7 @@
 // src/utils/errorBoundary.js - Error boundary implementation
 import { createElement } from 'svarog-ui-core';
 import { appState } from './stateStore.js';
+import { serviceCoordinator } from './serviceCoordinator.js';
 
 console.log('=== ERROR BOUNDARY UTILITIES ===');
 
@@ -468,7 +469,7 @@ errorManager.registerHandler(ErrorType.NETWORK, async (error, record) => {
   console.log('🌐 Handling network error...');
 
   // Check if it's a connection issue
-  if (!navigator.onLine) {
+  if (!window.navigator.onLine) {
     errorManager.showNotification({
       ...record,
       message: 'Keine Internetverbindung. Bitte prüfen Sie Ihre Verbindung.',

@@ -1,4 +1,4 @@
-// src/components/StoryblokComponent.js - Fixed with proper data loading
+// src/components/StoryblokComponent.js - Using MuchandyHeroContainer from svarog-ui-core
 import {
   Button,
   Card,
@@ -6,342 +6,66 @@ import {
   ContactInfo,
   Form,
   createElement,
-  PhoneRepairForm,
-  UsedPhonePriceForm,
-  MuchandyHero as SvarogMuchandyHero,
+  MuchandyHeroContainer, // Import the container from svarog-ui-core
 } from 'svarog-ui-core';
 
-import { MuchandyComponent } from './MuchandyComponent.js';
-import { appState } from '../utils/stateStore.js';
 import { serviceCoordinator } from '../utils/serviceCoordinator.js';
 import { router } from '../utils/router.js';
 
-console.log('=== FIXED STORYBLOK COMPONENT WITH PROPER DATA LOADING ===');
+console.log('=== STORYBLOK COMPONENT WITH SVAROG HERO CONTAINER ===');
 
-// Enhanced MuchandyHero with lifecycle management - KISS principle
-class EnhancedMuchandyHero extends MuchandyComponent {
-  constructor(props = {}) {
-    super(props);
-
-    // Hero-specific state
-    this.state = {
-      manufacturers: [],
-      apiReady: false,
-      dataLoaded: false,
-    };
-
-    // Component references
-    this.apiService = null;
-    this.repairForm = null;
-    this.buybackForm = null;
-    this.heroComponent = null;
-
-    console.log('🚀 Enhanced MuchandyHero created');
-  }
-
-  // === LIFECYCLE METHODS ===
-
-  // Wait for API service to be ready
-  async beforeLoad() {
-    console.log('📋 MuchandyHero beforeLoad - waiting for API service...');
-
-    // Wait for API service
-    await appState.waitFor('services.api.ready');
-
-    // Get API service instance
-    this.apiService = serviceCoordinator.get('api');
-    if (!this.apiService) {
-      throw new Error('API service not available');
-    }
-
-    console.log('✅ API service ready');
-  }
-
-  // Load all required data BEFORE rendering - Algorithmic Elegance
-  async load() {
-    console.log('📊 MuchandyHero load - fetching data...');
-
-    try {
-      // Load manufacturers (already cached by API service)
-      const manufacturers = await this.apiService.fetchManufacturers();
-
-      // Pre-load actions too
-      const actions = await this.apiService.fetchActions();
-
-      // Update state
-      this.setState({
-        manufacturers,
-        apiReady: true,
-        dataLoaded: true,
-      });
-
-      console.log(
-        `✅ Data loaded: ${manufacturers.length} manufacturers, ${actions.length} actions`
-      );
-    } catch (error) {
-      console.error('❌ Failed to load data:', error);
-
-      // Use fallback data
-      this.setState({
-        manufacturers: this.apiService.getFallbackManufacturers(),
-        apiReady: true,
-        dataLoaded: true,
-      });
-    }
-  }
-
-  // Prepare forms with loaded data
-  async beforeRender() {
-    console.log('🎯 MuchandyHero beforeRender - creating forms with data...');
-
-    // Create repair form with loaded data
-    this.repairForm = this.createRepairForm();
-
-    // Create buyback form with loaded data
-    this.buybackForm = this.createBuybackForm();
-
-    console.log('✅ Forms created with pre-loaded data');
-  }
-
-  // Render the hero - Economy of Expression
-  render() {
-    console.log('🎨 Rendering MuchandyHero');
-
-    // Create Svarog MuchandyHero with prepared forms
-    this.heroComponent = SvarogMuchandyHero({
-      backgroundImageUrl: this.props.background_image?.filename || '',
-      title: this.props.title || 'Finden Sie<br>Ihren Preis',
-      subtitle: this.props.subtitle || 'Jetzt Preis berechnen.',
-      defaultValue: this.props.default_tab || 'repair',
-      repairForm: this.repairForm,
-      buybackForm: this.buybackForm,
-      className: 'muchandy-hero-enhanced',
-    });
-
-    const element = this.heroComponent.getElement();
-
-    // Add data attributes for debugging
-    element.setAttribute('data-api-ready', this.state.apiReady);
-    element.setAttribute('data-manufacturers', this.state.manufacturers.length);
-
-    return element;
-  }
-
-  // Initialize forms after render
-  async afterRender() {
-    console.log('✨ MuchandyHero afterRender - initializing form data...');
-
-    // Initialize manufacturer dropdowns with data
-    await this.initializeFormData();
-  }
-
-  // Watch for data updates after mount
-  async onMount() {
-    console.log('🚀 MuchandyHero mounted');
-
-    // Watch for manufacturer updates
-    this.watchState('api.manufacturers', (manufacturers) => {
-      if (manufacturers && manufacturers.length > 0) {
-        console.log('📝 Manufacturers updated:', manufacturers.length);
-        this.updateManufacturerDropdowns(manufacturers);
-      }
-    });
-  }
-
-  // === FORM CREATION ===
-
-  // Create repair form with proper data handling - Maximum Conciseness
-  createRepairForm() {
-    return PhoneRepairForm({
-      service: this.apiService,
-      initialManufacturers: this.state.manufacturers,
-      onChange: (priceData) => {
-        console.log('💰 Repair price updated:', priceData);
-        this.emit('repairPriceChange', priceData);
-      },
-      onSubmit: (formData) => {
-        console.log('📅 Schedule repair clicked:', formData);
-        if (formData.price) {
-          this.handleRepairSubmit(formData);
-        }
-      },
-    });
-  }
-
-  // Create buyback form with proper data handling
-  createBuybackForm() {
-    return UsedPhonePriceForm({
-      service: this.apiService,
-      initialManufacturers: this.state.manufacturers,
-      onChange: (priceData) => {
-        console.log('💰 Buyback price updated:', priceData);
-        this.emit('buybackPriceChange', priceData);
-      },
-      onSubmit: (formData) => {
-        console.log('📝 Buyback form submitted:', formData);
-        if (formData.price) {
-          this.handleBuybackSubmit(formData);
-        }
-      },
-    });
-  }
-
-  // === DATA INITIALIZATION ===
-
-  // Initialize form dropdowns with pre-loaded data - KISS principle
-  async initializeFormData() {
-    if (!this.element) return;
-
-    console.log('🔄 Initializing form dropdowns with data...');
-
-    const forms = this.element.querySelectorAll('form');
-
-    for (const form of forms) {
-      const manufacturerSelect = form.querySelector(
-        'select[name="manufacturer"]'
-      );
-      if (!manufacturerSelect) continue;
-
-      // Skip if already populated
-      if (manufacturerSelect.options.length > 1) {
-        console.log('✅ Manufacturer dropdown already populated');
-        continue;
-      }
-
-      // Populate with pre-loaded data
-      this.populateManufacturerDropdown(
-        manufacturerSelect,
-        this.state.manufacturers
-      );
-
-      // Set up cascade loading
-      this.setupCascadeLoading(form, manufacturerSelect);
-    }
-
-    console.log('✅ Form data initialization complete');
-  }
-
-  // Populate manufacturer dropdown - Algorithmic Elegance
-  populateManufacturerDropdown(select, manufacturers) {
-    // Clear existing options
-    select.innerHTML =
-      '<option value="" disabled selected>Hersteller auswählen</option>';
-
-    // Add manufacturers
-    manufacturers.forEach((mfg) => {
-      const option = document.createElement('option');
-      option.value = mfg.id;
-      option.textContent = mfg.name;
-      select.appendChild(option);
-    });
-
-    console.log(`✅ Populated ${manufacturers.length} manufacturers`);
-  }
-
-  // Setup cascade loading for devices/actions
-  setupCascadeLoading(form, manufacturerSelect) {
-    manufacturerSelect.addEventListener('change', async (e) => {
-      const manufacturerId = e.target.value;
-      if (!manufacturerId) return;
-
-      console.log(`🔧 Manufacturer selected: ${manufacturerId}`);
-
-      const deviceSelect = form.querySelector('select[name="device"]');
-      if (!deviceSelect) return;
-
-      // Show loading state
-      deviceSelect.innerHTML =
-        '<option value="" disabled selected>Lade Modelle...</option>';
-      deviceSelect.disabled = true;
-
-      try {
-        // Fetch devices
-        const devices = await this.apiService.fetchDevices(manufacturerId);
-        console.log(`📱 Loaded ${devices.length} devices`);
-
-        // Populate devices
-        deviceSelect.innerHTML =
-          '<option value="" disabled selected>Modell auswählen</option>';
-        devices.forEach((device) => {
-          const option = document.createElement('option');
-          option.value = device.id;
-          option.textContent = device.name;
-          deviceSelect.appendChild(option);
-        });
-
-        deviceSelect.disabled = false;
-
-        // Trigger change event - FIXED: Use window.Event
-        deviceSelect.dispatchEvent(
-          new window.Event('change', { bubbles: true })
-        );
-      } catch (error) {
-        console.error('❌ Failed to load devices:', error);
-        deviceSelect.innerHTML =
-          '<option value="" disabled selected>Fehler beim Laden</option>';
-      }
-    });
-  }
-
-  // Update manufacturer dropdowns when data changes
-  updateManufacturerDropdowns(manufacturers) {
-    if (!this.element) return;
-
-    const selects = this.element.querySelectorAll(
-      'select[name="manufacturer"]'
-    );
-    selects.forEach((select) => {
-      const currentValue = select.value;
-      this.populateManufacturerDropdown(select, manufacturers);
-
-      // Restore value if still valid
-      if (currentValue && manufacturers.find((m) => m.id === currentValue)) {
-        select.value = currentValue;
-      }
-    });
-  }
-
-  // === EVENT HANDLERS ===
-
-  handleRepairSubmit(formData) {
-    alert(
-      `Reparatur für ${formData.device}: ${formData.action} - ${formData.formatted || formData.price + ' €'}`
-    );
-    // Navigate to booking page or open modal
-  }
-
-  handleBuybackSubmit(formData) {
-    alert(
-      `Ankauf für ${formData.device}: ${formData.formatted || formData.price + ' €'}`
-    );
-    // Navigate to buyback form or open modal
-  }
-
-  // === CLEANUP ===
-
-  async beforeDestroy() {
-    console.log('⚠️ MuchandyHero cleanup...');
-
-    if (this.heroComponent?.destroy) {
-      this.heroComponent.destroy();
-    }
-  }
-}
-
-// Component factory functions - kept for backward compatibility
+// Render MuchandyHero using the container from svarog-ui - KISS principle
 function renderMuchandyHero(blok) {
-  console.log('🚀 Rendering Enhanced MuchandyHero:', blok);
+  console.log('🚀 Rendering MuchandyHeroContainer from svarog-ui:', blok);
 
-  const hero = new EnhancedMuchandyHero(blok);
+  // Get API service
+  const apiService = serviceCoordinator.get('api');
+  if (!apiService) {
+    console.error('❌ API service not available');
+    return {
+      getElement: () =>
+        createElement('div', {
+          className: 'error',
+          style: { padding: '2rem', background: '#fee', color: '#c00' },
+          textContent: 'API Service nicht verfügbar',
+        }),
+      update: () => {},
+      destroy: () => {},
+    };
+  }
 
-  // Return component API
-  return {
-    async getElement() {
-      return hero.getElement();
+  // Create container with services from svarog-ui
+  const heroContainer = MuchandyHeroContainer({
+    // Services
+    repairService: apiService,
+    buybackService: apiService,
+
+    // Hero props from Storyblok
+    backgroundImageUrl: blok.background_image?.filename || '',
+    title: blok.title || 'Finden Sie<br>Ihren Preis',
+    subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
+    defaultTab: blok.default_tab || 'repair',
+
+    // Callbacks
+    onScheduleClick: (repairInfo) => {
+      console.log('📅 Schedule repair clicked:', repairInfo);
+      if (repairInfo.price) {
+        alert(
+          `Reparatur für ${repairInfo.device}: ${repairInfo.action} - ${repairInfo.formatted || repairInfo.price + ' €'}`
+        );
+      }
     },
-    update: (props) => hero.update(props),
-    destroy: () => hero.destroy(),
-  };
+    onSubmit: (formData) => {
+      console.log('📝 Buyback form submitted:', formData);
+      if (formData.price) {
+        alert(
+          `Ankauf für ${formData.device}: ${formData.formatted || formData.price + ' €'}`
+        );
+      }
+    },
+  });
+
+  return heroContainer;
 }
 
 // All other component renderers remain unchanged - Economy of Expression
@@ -677,37 +401,13 @@ export function renderStoryblokComponents(bloks) {
     try {
       const component = renderStoryblokComponent(blok);
 
-      // Handle async components
+      // Handle components with getElement method
       if (component.getElement && typeof component.getElement === 'function') {
         const element = component.getElement();
-
-        if (element instanceof Promise) {
-          // Create placeholder
-          const placeholder = createElement('div', {
-            className: 'component-loading',
-            style:
-              'min-height: 200px; display: flex; align-items: center; justify-content: center;',
-            innerHTML: '<span>Loading component...</span>',
-          });
-
-          container.appendChild(placeholder);
-
-          // Replace with actual component when ready
-          element
-            .then((actualElement) => {
-              if (placeholder.parentNode) {
-                placeholder.parentNode.replaceChild(actualElement, placeholder);
-              }
-            })
-            .catch((error) => {
-              console.error(`Failed to load async component:`, error);
-              placeholder.innerHTML = `<span style="color: red;">Component failed to load</span>`;
-            });
-        } else {
-          container.appendChild(element);
-        }
+        container.appendChild(element);
       } else {
-        container.appendChild(component.getElement());
+        // Direct DOM elements
+        container.appendChild(component);
       }
 
       successCount++;
@@ -746,28 +446,33 @@ export function renderStoryblokComponents(bloks) {
 
 // Development helpers
 if (import.meta.env.DEV) {
-  window.EnhancedMuchandyHero = EnhancedMuchandyHero;
+  window.testMuchandyHeroContainer = () => {
+    console.log('🧪 Testing MuchandyHeroContainer from svarog-ui...');
 
-  window.testMuchandyHero = async () => {
-    console.log('🧪 Testing Enhanced MuchandyHero...');
+    // Get API service
+    const apiService = serviceCoordinator.get('api');
+    if (!apiService) {
+      console.error('API service not available for testing');
+      return;
+    }
 
-    const testBlok = {
-      component: 'muchandy_hero',
-      title: 'Test Hero',
-      subtitle: 'Testing with proper data loading',
-      default_tab: 'repair',
-    };
+    const container = MuchandyHeroContainer({
+      repairService: apiService,
+      buybackService: apiService,
+      title: 'Test Container',
+      subtitle: 'Testing with svarog-ui container',
+    });
 
-    const hero = renderMuchandyHero(testBlok);
-    const element = await hero.getElement();
+    const element = container.getElement();
+    console.log('✅ Test container created:', element);
 
-    console.log('✅ Test hero created');
-    return { hero, element };
+    return { container, element };
   };
 
-  console.log('🔧 StoryblokComponent development helpers:');
-  console.log('  - window.EnhancedMuchandyHero - Hero class');
-  console.log('  - window.testMuchandyHero() - Test hero creation');
+  console.log('🔧 StoryblokComponent helpers:');
+  console.log('  - window.testMuchandyHeroContainer() - Test hero container');
 }
 
-console.log('✅ StoryblokComponent fixed with proper data loading!');
+console.log(
+  '✅ StoryblokComponent with svarog-ui MuchandyHeroContainer ready!'
+);
