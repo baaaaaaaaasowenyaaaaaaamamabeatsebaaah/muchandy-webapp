@@ -321,28 +321,66 @@ class EnhancedApp extends MuchandyComponent {
   }
 
   /**
-   * Create header component
+   * Create header component from Storyblok config
    */
   createHeader(config) {
-    console.log('🎨 Creating header from config...');
+    console.log('🎨 Creating header from Storyblok config...');
 
+    // Validate required Storyblok data
+    if (!config) {
+      console.error('❌ No header config provided from Storyblok');
+      throw new Error('Header config is required from Storyblok');
+    }
+
+    if (!config.navigation?.items?.length) {
+      console.error('❌ No navigation items found in Storyblok config');
+      throw new Error('Navigation items are required from Storyblok');
+    }
+
+    if (!config.contactInfo) {
+      console.error('❌ No contact info found in Storyblok config');
+      throw new Error('Contact info is required from Storyblok');
+    }
+
+    // Create header with Storyblok data - NO FALLBACKS initially
     const header = CollapsibleHeaderContainer({
-      siteName: config.siteName,
-      logo: {
-        imageUrl: config.logo,
-        alt: config.siteName,
-        fallbackImageUrl: config.compactLogo,
-      },
+      // Basic info from Storyblok
+      siteName: config.siteName, // Required from Storyblok
+
+      // Logo URLs - direct from Storyblok (no nested objects)
+      logo: config.logo, // Full logo URL from Storyblok
+      compactLogo: config.compactLogo, // Compact logo URL from Storyblok
+
+      // Navigation - direct array from Storyblok
       navigation: {
-        items: config.navigation.items,
-        ctaButton: config.navigation.ctaButton,
+        items: config.navigation.items, // Must come from Storyblok
       },
-      contactInfo: config.contactInfo,
-      mobileMenuButton: {
-        variant: 'icon',
-        icon: '☰',
-        ariaLabel: 'Toggle mobile menu',
+
+      // Contact info - flat structure from Storyblok
+      contactInfo: {
+        location: config.contactInfo.location, // Required from Storyblok
+        phone: config.contactInfo.phone, // Required from Storyblok
+        email: config.contactInfo.email, // Required from Storyblok
       },
+
+      // Behavior settings from Storyblok
+      collapseThreshold: config.collapseThreshold, // From Storyblok or default
+      callButtonText: config.callButtonText, // From Storyblok
+      showStickyIcons: config.showStickyIcons, // From Storyblok boolean
+      stickyIconsPosition: config.stickyIconsPosition, // From Storyblok
+
+      // Event handlers
+      onCallClick: (e) => {
+        console.log('📞 Call button clicked');
+        // Use phone from Storyblok config
+        if (config.contactInfo?.phone) {
+          const cleanPhone = config.contactInfo.phone.replace(/[\s()/-]/g, '');
+          window.location.href = `tel:${cleanPhone}`;
+        }
+      },
+
+      // Styling
+      className: config.className || 'muchandy-header',
     });
 
     return header.getElement();
