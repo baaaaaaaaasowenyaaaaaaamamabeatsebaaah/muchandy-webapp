@@ -1,4 +1,4 @@
-/* CRITICAL FIX: Hide ALL custom select overlays in MuchandyHero */
+/* Fix for MuchandyHero select overlays */
 .muchandy-hero .select-custom,
 .muchandy-hero-enhanced .select-custom {
   display: none !important;
@@ -10,7 +10,7 @@
   opacity: 1 !important;
   pointer-events: auto !important;
   position: relative !important;
-  z-index: 100 !important;
+  z-index: 10 !important;
   cursor: pointer !important;
   -webkit-appearance: menulist !important;
   appearance: menulist !important;

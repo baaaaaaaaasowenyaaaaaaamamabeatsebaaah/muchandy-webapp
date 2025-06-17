@@ -1,4 +1,4 @@
-// src/components/StoryblokComponent.js - COMPLETE FIXED VERSION
+// src/components/StoryblokComponent.js - Fixed with proper data loading
 import {
   Button,
   Card,
@@ -8,299 +8,343 @@ import {
   createElement,
   PhoneRepairForm,
   UsedPhonePriceForm,
-  MuchandyHero,
+  MuchandyHero as SvarogMuchandyHero,
 } from 'svarog-ui-core';
 
-import ApiService from '../services/apiService.js';
+import { MuchandyComponent } from './MuchandyComponent.js';
+import { appState } from '../utils/stateStore.js';
+import { serviceCoordinator } from '../utils/serviceCoordinator.js';
 import { router } from '../utils/router.js';
 
-console.log('=== STORYBLOK COMPONENT WITH DATA LOADING FIX ===');
+console.log('=== FIXED STORYBLOK COMPONENT WITH PROPER DATA LOADING ===');
 
-// Single API service instance
-let apiServiceInstance = null;
-const getApiService = () => {
-  if (!apiServiceInstance) {
-    apiServiceInstance = new ApiService();
-    apiServiceInstance.testConnection().then((result) => {
-      if (result.success) {
-        console.log('✅ API connection verified');
-      } else {
-        console.warn('⚠️ API connection issues:', result.error);
+// Enhanced MuchandyHero with lifecycle management - KISS principle
+class EnhancedMuchandyHero extends MuchandyComponent {
+  constructor(props = {}) {
+    super(props);
+
+    // Hero-specific state
+    this.state = {
+      manufacturers: [],
+      apiReady: false,
+      dataLoaded: false,
+    };
+
+    // Component references
+    this.apiService = null;
+    this.repairForm = null;
+    this.buybackForm = null;
+    this.heroComponent = null;
+
+    console.log('🚀 Enhanced MuchandyHero created');
+  }
+
+  // === LIFECYCLE METHODS ===
+
+  // Wait for API service to be ready
+  async beforeLoad() {
+    console.log('📋 MuchandyHero beforeLoad - waiting for API service...');
+
+    // Wait for API service
+    await appState.waitFor('services.api.ready');
+
+    // Get API service instance
+    this.apiService = serviceCoordinator.get('api');
+    if (!this.apiService) {
+      throw new Error('API service not available');
+    }
+
+    console.log('✅ API service ready');
+  }
+
+  // Load all required data BEFORE rendering - Algorithmic Elegance
+  async load() {
+    console.log('📊 MuchandyHero load - fetching data...');
+
+    try {
+      // Load manufacturers (already cached by API service)
+      const manufacturers = await this.apiService.fetchManufacturers();
+
+      // Pre-load actions too
+      const actions = await this.apiService.fetchActions();
+
+      // Update state
+      this.setState({
+        manufacturers,
+        apiReady: true,
+        dataLoaded: true,
+      });
+
+      console.log(
+        `✅ Data loaded: ${manufacturers.length} manufacturers, ${actions.length} actions`
+      );
+    } catch (error) {
+      console.error('❌ Failed to load data:', error);
+
+      // Use fallback data
+      this.setState({
+        manufacturers: this.apiService.getFallbackManufacturers(),
+        apiReady: true,
+        dataLoaded: true,
+      });
+    }
+  }
+
+  // Prepare forms with loaded data
+  async beforeRender() {
+    console.log('🎯 MuchandyHero beforeRender - creating forms with data...');
+
+    // Create repair form with loaded data
+    this.repairForm = this.createRepairForm();
+
+    // Create buyback form with loaded data
+    this.buybackForm = this.createBuybackForm();
+
+    console.log('✅ Forms created with pre-loaded data');
+  }
+
+  // Render the hero - Economy of Expression
+  render() {
+    console.log('🎨 Rendering MuchandyHero');
+
+    // Create Svarog MuchandyHero with prepared forms
+    this.heroComponent = SvarogMuchandyHero({
+      backgroundImageUrl: this.props.background_image?.filename || '',
+      title: this.props.title || 'Finden Sie<br>Ihren Preis',
+      subtitle: this.props.subtitle || 'Jetzt Preis berechnen.',
+      defaultValue: this.props.default_tab || 'repair',
+      repairForm: this.repairForm,
+      buybackForm: this.buybackForm,
+      className: 'muchandy-hero-enhanced',
+    });
+
+    const element = this.heroComponent.getElement();
+
+    // Add data attributes for debugging
+    element.setAttribute('data-api-ready', this.state.apiReady);
+    element.setAttribute('data-manufacturers', this.state.manufacturers.length);
+
+    return element;
+  }
+
+  // Initialize forms after render
+  async afterRender() {
+    console.log('✨ MuchandyHero afterRender - initializing form data...');
+
+    // Initialize manufacturer dropdowns with data
+    await this.initializeFormData();
+  }
+
+  // Watch for data updates after mount
+  async onMount() {
+    console.log('🚀 MuchandyHero mounted');
+
+    // Watch for manufacturer updates
+    this.watchState('api.manufacturers', (manufacturers) => {
+      if (manufacturers && manufacturers.length > 0) {
+        console.log('📝 Manufacturers updated:', manufacturers.length);
+        this.updateManufacturerDropdowns(manufacturers);
       }
     });
   }
-  return apiServiceInstance;
-};
 
-// Helper to initialize Svarog forms with data - KISS principle
-const initializeSvarogForms = async (heroElement, apiService) => {
-  console.log('🔄 Initializing Svarog forms with data...');
+  // === FORM CREATION ===
 
-  // Find all forms in the hero
-  const forms = heroElement.querySelectorAll('form');
-
-  for (const form of forms) {
-    const manufacturerSelect = form.querySelector(
-      'select[name="manufacturer"]'
-    );
-    if (!manufacturerSelect || manufacturerSelect.options.length > 1) {
-      console.log('Skip form - already initialized or no manufacturer select');
-      continue;
-    }
-
-    try {
-      // Load and populate manufacturers
-      const manufacturers = await apiService.fetchManufacturers();
-      console.log(`📱 Loading ${manufacturers.length} manufacturers into form`);
-
-      // Clear and populate
-      manufacturerSelect.innerHTML =
-        '<option value="" disabled selected>Hersteller auswählen</option>';
-
-      manufacturers.forEach((mfg) => {
-        const option = document.createElement('option');
-        option.value = mfg.id;
-        option.textContent = mfg.name;
-        manufacturerSelect.appendChild(option);
-      });
-
-      // Set up cascade loading for device select
-      manufacturerSelect.addEventListener('change', async (e) => {
-        const manufacturerId = e.target.value;
-        console.log(`🔧 Manufacturer selected: ${manufacturerId}`);
-
-        const deviceSelect = form.querySelector('select[name="device"]');
-        if (!deviceSelect) return;
-
-        // Show loading state
-        deviceSelect.innerHTML =
-          '<option value="" disabled selected>Lade Modelle...</option>';
-        deviceSelect.disabled = true;
-
-        try {
-          const devices = await apiService.fetchDevices(manufacturerId);
-          console.log(`📱 Loaded ${devices.length} devices`);
-
-          // Populate devices
-          deviceSelect.innerHTML =
-            '<option value="" disabled selected>Modell auswählen</option>';
-          devices.forEach((device) => {
-            const option = document.createElement('option');
-            option.value = device.id;
-            option.textContent = device.name;
-            deviceSelect.appendChild(option);
-          });
-
-          deviceSelect.disabled = false;
-
-          // Trigger change to update form state
-          const changeEvent = document.createEvent('Event');
-          changeEvent.initEvent('change', true, true);
-          deviceSelect.dispatchEvent(changeEvent);
-        } catch (error) {
-          console.error('❌ Failed to load devices:', error);
-          deviceSelect.innerHTML =
-            '<option value="" disabled selected>Fehler beim Laden</option>';
-        }
-      });
-
-      // Set up device select change handler
-      const deviceSelect = form.querySelector('select[name="device"]');
-      if (deviceSelect) {
-        deviceSelect.addEventListener('change', async (e) => {
-          const deviceId = e.target.value;
-          console.log(`📱 Device selected: ${deviceId}`);
-
-          // Handle action select for repair form
-          const actionSelect = form.querySelector('select[name="action"]');
-          if (actionSelect) {
-            actionSelect.innerHTML =
-              '<option value="" disabled selected>Lade Services...</option>';
-            actionSelect.disabled = true;
-
-            try {
-              const actions = await apiService.fetchActions(deviceId);
-              console.log(`🔧 Loaded ${actions.length} actions`);
-
-              actionSelect.innerHTML =
-                '<option value="" disabled selected>Service auswählen</option>';
-              actions.forEach((action) => {
-                const option = document.createElement('option');
-                option.value = action.id;
-                option.textContent = action.name;
-                actionSelect.appendChild(option);
-              });
-
-              actionSelect.disabled = false;
-            } catch (error) {
-              console.error('❌ Failed to load actions:', error);
-              actionSelect.innerHTML =
-                '<option value="" disabled selected>Fehler beim Laden</option>';
-            }
-          }
-
-          // Handle condition selector for buyback form
-          const conditionContainer = form.querySelector('.condition-selector');
-          if (conditionContainer && apiService.fetchConditions) {
-            try {
-              const conditions = await apiService.fetchConditions(deviceId);
-              console.log(`📋 Loaded ${conditions.length} conditions`);
-
-              // Clear existing conditions
-              conditionContainer.innerHTML = '';
-
-              // Create condition buttons
-              const conditionGroup = createElement('div', {
-                className: 'condition-group',
-                style:
-                  'display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;',
-              });
-
-              conditions.forEach((condition) => {
-                const button = createElement('button', {
-                  type: 'button',
-                  className: 'condition-button',
-                  textContent: condition.name,
-                  style:
-                    'padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;',
-                  onclick: () => {
-                    // Handle condition selection
-                    conditionGroup.querySelectorAll('button').forEach((btn) => {
-                      btn.style.background = 'white';
-                      btn.style.color = 'black';
-                    });
-                    button.style.background = '#ff7f50';
-                    button.style.color = 'white';
-
-                    // Trigger price calculation
-                    const conditionEvent = document.createEvent('Event');
-                    conditionEvent.initEvent('conditionSelected', true, true);
-                    conditionEvent.detail = {
-                      conditionId: condition.id,
-                      deviceId,
-                    };
-                    form.dispatchEvent(conditionEvent);
-                  },
-                });
-                conditionGroup.appendChild(button);
-              });
-
-              conditionContainer.appendChild(conditionGroup);
-            } catch (error) {
-              console.error('❌ Failed to load conditions:', error);
-            }
-          }
-        });
-      }
-
-      console.log('✅ Form initialized with cascade loading');
-    } catch (error) {
-      console.error('❌ Form initialization failed:', error);
-    }
-  }
-};
-
-// Component map
-const componentMap = {
-  hero: renderHero,
-  muchandy_hero: renderMuchandyHero,
-  section: renderSection,
-  card: renderCard,
-  blog_card: renderBlogCard,
-  button: renderButton,
-  text: renderText,
-  contact_info: renderContactInfo,
-  form: renderForm,
-};
-
-// FIXED: MuchandyHero with automatic data loading
-function renderMuchandyHero(blok) {
-  console.log('🚀 Rendering MuchandyHero with API service:', blok);
-
-  try {
-    const apiService = getApiService();
-
-    // Create repair form with minimal, correct props
-    const repairForm = PhoneRepairForm({
-      service: apiService,
+  // Create repair form with proper data handling - Maximum Conciseness
+  createRepairForm() {
+    return PhoneRepairForm({
+      service: this.apiService,
+      initialManufacturers: this.state.manufacturers,
       onChange: (priceData) => {
         console.log('💰 Repair price updated:', priceData);
+        this.emit('repairPriceChange', priceData);
       },
       onSubmit: (formData) => {
         console.log('📅 Schedule repair clicked:', formData);
         if (formData.price) {
-          alert(
-            `Reparatur für ${formData.device}: ${formData.action} - ${formData.formatted || formData.price + ' €'}`
-          );
+          this.handleRepairSubmit(formData);
         }
       },
     });
+  }
 
-    // Create buyback form with minimal, correct props
-    const buybackForm = UsedPhonePriceForm({
-      service: apiService,
+  // Create buyback form with proper data handling
+  createBuybackForm() {
+    return UsedPhonePriceForm({
+      service: this.apiService,
+      initialManufacturers: this.state.manufacturers,
       onChange: (priceData) => {
         console.log('💰 Buyback price updated:', priceData);
+        this.emit('buybackPriceChange', priceData);
       },
       onSubmit: (formData) => {
         console.log('📝 Buyback form submitted:', formData);
         if (formData.price) {
-          alert(
-            `Ankauf für ${formData.device}: ${formData.formatted || formData.price + ' €'}`
-          );
+          this.handleBuybackSubmit(formData);
         }
       },
     });
+  }
 
-    // Create MuchandyHero with correct props
-    const muchandyHero = MuchandyHero({
-      backgroundImageUrl: blok.background_image?.filename || '',
-      title: blok.title || 'Finden Sie<br>Ihren Preis',
-      subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-      defaultValue: blok.default_tab || 'repair',
-      repairForm,
-      buybackForm,
-      className: 'muchandy-hero-enhanced',
+  // === DATA INITIALIZATION ===
+
+  // Initialize form dropdowns with pre-loaded data - KISS principle
+  async initializeFormData() {
+    if (!this.element) return;
+
+    console.log('🔄 Initializing form dropdowns with data...');
+
+    const forms = this.element.querySelectorAll('form');
+
+    for (const form of forms) {
+      const manufacturerSelect = form.querySelector(
+        'select[name="manufacturer"]'
+      );
+      if (!manufacturerSelect) continue;
+
+      // Skip if already populated
+      if (manufacturerSelect.options.length > 1) {
+        console.log('✅ Manufacturer dropdown already populated');
+        continue;
+      }
+
+      // Populate with pre-loaded data
+      this.populateManufacturerDropdown(
+        manufacturerSelect,
+        this.state.manufacturers
+      );
+
+      // Set up cascade loading
+      this.setupCascadeLoading(form, manufacturerSelect);
+    }
+
+    console.log('✅ Form data initialization complete');
+  }
+
+  // Populate manufacturer dropdown - Algorithmic Elegance
+  populateManufacturerDropdown(select, manufacturers) {
+    // Clear existing options
+    select.innerHTML =
+      '<option value="" disabled selected>Hersteller auswählen</option>';
+
+    // Add manufacturers
+    manufacturers.forEach((mfg) => {
+      const option = document.createElement('option');
+      option.value = mfg.id;
+      option.textContent = mfg.name;
+      select.appendChild(option);
     });
 
-    console.log('✅ MuchandyHero created successfully');
+    console.log(`✅ Populated ${manufacturers.length} manufacturers`);
+  }
 
-    // FIX 1: Hide custom select overlays and ensure native selects are visible
-    setTimeout(() => {
-      const heroElement = muchandyHero.getElement();
-      if (heroElement) {
-        // Hide all custom select overlays
-        heroElement.querySelectorAll('.select-custom').forEach((el) => {
-          el.style.display = 'none';
+  // Setup cascade loading for devices/actions
+  setupCascadeLoading(form, manufacturerSelect) {
+    manufacturerSelect.addEventListener('change', async (e) => {
+      const manufacturerId = e.target.value;
+      if (!manufacturerId) return;
+
+      console.log(`🔧 Manufacturer selected: ${manufacturerId}`);
+
+      const deviceSelect = form.querySelector('select[name="device"]');
+      if (!deviceSelect) return;
+
+      // Show loading state
+      deviceSelect.innerHTML =
+        '<option value="" disabled selected>Lade Modelle...</option>';
+      deviceSelect.disabled = true;
+
+      try {
+        // Fetch devices
+        const devices = await this.apiService.fetchDevices(manufacturerId);
+        console.log(`📱 Loaded ${devices.length} devices`);
+
+        // Populate devices
+        deviceSelect.innerHTML =
+          '<option value="" disabled selected>Modell auswählen</option>';
+        devices.forEach((device) => {
+          const option = document.createElement('option');
+          option.value = device.id;
+          option.textContent = device.name;
+          deviceSelect.appendChild(option);
         });
 
-        // Ensure native selects are visible
-        heroElement.querySelectorAll('select').forEach((el) => {
-          el.style.opacity = '1';
-          el.style.display = 'block';
-        });
+        deviceSelect.disabled = false;
 
-        console.log('✅ Fixed select overlays');
-
-        // FIX 2: Initialize forms with data
-        initializeSvarogForms(heroElement, apiService)
-          .then(() => {
-            console.log('✅ Forms initialized with data');
-          })
-          .catch((error) => {
-            console.error('❌ Form initialization error:', error);
-          });
+        // Trigger change event - FIXED: Use window.Event
+        deviceSelect.dispatchEvent(
+          new window.Event('change', { bubbles: true })
+        );
+      } catch (error) {
+        console.error('❌ Failed to load devices:', error);
+        deviceSelect.innerHTML =
+          '<option value="" disabled selected>Fehler beim Laden</option>';
       }
-    }, 200);
+    });
+  }
 
-    return muchandyHero;
-  } catch (error) {
-    console.error('❌ Error creating MuchandyHero:', error);
-    return createFallbackHero(blok);
+  // Update manufacturer dropdowns when data changes
+  updateManufacturerDropdowns(manufacturers) {
+    if (!this.element) return;
+
+    const selects = this.element.querySelectorAll(
+      'select[name="manufacturer"]'
+    );
+    selects.forEach((select) => {
+      const currentValue = select.value;
+      this.populateManufacturerDropdown(select, manufacturers);
+
+      // Restore value if still valid
+      if (currentValue && manufacturers.find((m) => m.id === currentValue)) {
+        select.value = currentValue;
+      }
+    });
+  }
+
+  // === EVENT HANDLERS ===
+
+  handleRepairSubmit(formData) {
+    alert(
+      `Reparatur für ${formData.device}: ${formData.action} - ${formData.formatted || formData.price + ' €'}`
+    );
+    // Navigate to booking page or open modal
+  }
+
+  handleBuybackSubmit(formData) {
+    alert(
+      `Ankauf für ${formData.device}: ${formData.formatted || formData.price + ' €'}`
+    );
+    // Navigate to buyback form or open modal
+  }
+
+  // === CLEANUP ===
+
+  async beforeDestroy() {
+    console.log('⚠️ MuchandyHero cleanup...');
+
+    if (this.heroComponent?.destroy) {
+      this.heroComponent.destroy();
+    }
   }
 }
 
-// Standard hero (unchanged - it works)
+// Component factory functions - kept for backward compatibility
+function renderMuchandyHero(blok) {
+  console.log('🚀 Rendering Enhanced MuchandyHero:', blok);
+
+  const hero = new EnhancedMuchandyHero(blok);
+
+  // Return component API
+  return {
+    async getElement() {
+      return hero.getElement();
+    },
+    update: (props) => hero.update(props),
+    destroy: () => hero.destroy(),
+  };
+}
+
+// All other component renderers remain unchanged - Economy of Expression
 function renderHero(blok) {
   console.log('🎯 Rendering standard hero:', blok);
 
@@ -386,7 +430,6 @@ function renderHero(blok) {
   };
 }
 
-// All other renderers unchanged (they work)
 function renderSection(blok) {
   const sectionElement = createElement('section', {
     className: 'svarog-section',
@@ -581,74 +624,23 @@ function renderForm(blok) {
   });
 }
 
-function createFallbackHero(blok) {
-  console.log('🆘 Creating fallback hero for:', blok);
+// Component map
+const componentMap = {
+  hero: renderHero,
+  muchandy_hero: renderMuchandyHero,
+  section: renderSection,
+  card: renderCard,
+  blog_card: renderBlogCard,
+  button: renderButton,
+  text: renderText,
+  contact_info: renderContactInfo,
+  form: renderForm,
+};
 
-  const heroElement = createElement('section', {
-    className: 'fallback-hero muchandy-hero-fallback',
-    style: {
-      minHeight: '60vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem',
-      background: blok.background_image?.filename
-        ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${blok.background_image.filename})`
-        : 'linear-gradient(135deg, #ff6b35, #f7931e)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      color: 'white',
-      textAlign: 'center',
-    },
-  });
-
-  const title = createElement('h1', {
-    innerHTML: blok.title || 'Muchandy<br>Handy-Service',
-    style: {
-      fontSize: 'clamp(2rem, 5vw, 4rem)',
-      fontWeight: '700',
-      marginBottom: '1rem',
-      lineHeight: '1.2',
-    },
-  });
-
-  const subtitle = createElement('p', {
-    textContent:
-      blok.subtitle ||
-      'Professionelle Handy-Reparaturen und faire Ankaufspreise',
-    style: {
-      fontSize: 'clamp(1rem, 3vw, 1.5rem)',
-      marginBottom: '2rem',
-      opacity: '0.9',
-    },
-  });
-
-  const ctaButton = Button({
-    children: 'Jetzt Preis berechnen',
-    variant: 'secondary',
-    size: 'large',
-    onClick: () => {
-      console.log('Fallback hero CTA clicked');
-    },
-  });
-
-  heroElement.appendChild(title);
-  heroElement.appendChild(subtitle);
-  heroElement.appendChild(ctaButton.getElement());
-
-  return {
-    getElement: () => heroElement,
-    update: () => {},
-    destroy: () => heroElement.remove(),
-  };
-}
-
-// Main component renderer (unchanged)
+// Main component renderer
 export function renderStoryblokComponent(blok) {
   console.log('=== RENDERING COMPONENT ===');
   console.log('Component type:', blok.component);
-  console.log('Component data:', blok);
 
   const renderer = componentMap[blok.component];
 
@@ -668,7 +660,7 @@ export function renderStoryblokComponent(blok) {
   }
 }
 
-// Main components renderer (unchanged)
+// Main components renderer
 export function renderStoryblokComponents(bloks) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', bloks.length);
@@ -684,7 +676,40 @@ export function renderStoryblokComponents(bloks) {
   bloks.forEach((blok, index) => {
     try {
       const component = renderStoryblokComponent(blok);
-      container.appendChild(component.getElement());
+
+      // Handle async components
+      if (component.getElement && typeof component.getElement === 'function') {
+        const element = component.getElement();
+
+        if (element instanceof Promise) {
+          // Create placeholder
+          const placeholder = createElement('div', {
+            className: 'component-loading',
+            style:
+              'min-height: 200px; display: flex; align-items: center; justify-content: center;',
+            innerHTML: '<span>Loading component...</span>',
+          });
+
+          container.appendChild(placeholder);
+
+          // Replace with actual component when ready
+          element
+            .then((actualElement) => {
+              if (placeholder.parentNode) {
+                placeholder.parentNode.replaceChild(actualElement, placeholder);
+              }
+            })
+            .catch((error) => {
+              console.error(`Failed to load async component:`, error);
+              placeholder.innerHTML = `<span style="color: red;">Component failed to load</span>`;
+            });
+        } else {
+          container.appendChild(element);
+        }
+      } else {
+        container.appendChild(component.getElement());
+      }
+
       successCount++;
       console.log(
         `✅ Component ${index + 1} (${blok.component}) rendered successfully`
@@ -719,124 +744,30 @@ export function renderStoryblokComponents(bloks) {
   return container;
 }
 
-// Enhanced debugging for MuchandyHero
-window.debugMuchandyHero = () => {
-  console.log('🔍 Debugging MuchandyHero...');
-
-  // Find all tabs
-  const tabs = document.querySelectorAll('.tabs__button');
-  console.log(`Found ${tabs.length} tabs`);
-
-  // Add click listeners to tabs
-  tabs.forEach((tab, i) => {
-    // Remove any existing listeners
-    const newTab = tab.cloneNode(true);
-    tab.parentNode.replaceChild(newTab, tab);
-
-    // Add new listener
-    newTab.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log(`✅ Tab ${i} clicked!`);
-
-      // Manually switch tabs
-      document.querySelectorAll('.tabs__button').forEach((t) => {
-        t.classList.remove('tabs__button--active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      newTab.classList.add('tabs__button--active');
-      newTab.setAttribute('aria-selected', 'true');
-
-      // Switch panels
-      const panelId = newTab.getAttribute('aria-controls');
-      document.querySelectorAll('.tabs__panel').forEach((p) => {
-        p.classList.remove('tabs__panel--active');
-        p.hidden = true;
-      });
-      const panel = document.getElementById(panelId);
-      if (panel) {
-        panel.classList.add('tabs__panel--active');
-        panel.hidden = false;
-      }
-    });
-  });
-
-  console.log('✅ Debug listeners added to tabs');
-
-  // Check for blocking elements
-  const firstTab = tabs[0];
-  if (firstTab) {
-    const rect = firstTab.getBoundingClientRect();
-    const topElement = document.elementFromPoint(
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2
-    );
-    if (topElement === firstTab) {
-      console.log('✅ First tab is clickable');
-    } else {
-      console.log('❌ First tab is blocked by:', topElement);
-    }
-  }
-
-  // Test API data
-  const testAPI = async () => {
-    console.log('🧪 Testing API...');
-    const apiService = getApiService();
-    const manufacturers = await apiService.fetchManufacturers();
-    console.log('✅ API returned manufacturers:', manufacturers);
-  };
-
-  testAPI();
-};
-
-// Development helpers with enhanced debugging
+// Development helpers
 if (import.meta.env.DEV) {
-  window.testMuchandyHero = () => {
-    console.log('🧪 Testing MuchandyHero with data loading...');
-    try {
-      const testBlok = {
-        component: 'muchandy_hero',
-        title: 'Test Hero',
-        subtitle: 'Testing with data loading',
-        default_tab: 'repair',
-      };
-      const hero = renderMuchandyHero(testBlok);
-      console.log('✅ Test hero created:', hero);
+  window.EnhancedMuchandyHero = EnhancedMuchandyHero;
 
-      // Check for data after a delay
-      setTimeout(() => {
-        const element = hero.getElement();
-        const selects = element.querySelectorAll('select');
-        selects.forEach((select, i) => {
-          console.log(`Select ${i}: ${select.options.length} options`);
-        });
-      }, 1000);
+  window.testMuchandyHero = async () => {
+    console.log('🧪 Testing Enhanced MuchandyHero...');
 
-      return hero;
-    } catch (error) {
-      console.error('❌ Test hero failed:', error);
-      return null;
-    }
+    const testBlok = {
+      component: 'muchandy_hero',
+      title: 'Test Hero',
+      subtitle: 'Testing with proper data loading',
+      default_tab: 'repair',
+    };
+
+    const hero = renderMuchandyHero(testBlok);
+    const element = await hero.getElement();
+
+    console.log('✅ Test hero created');
+    return { hero, element };
   };
 
-  window.testApiService = () => {
-    console.log('🧪 Testing API service...');
-    const apiService = getApiService();
-    apiService.testConnection();
-    apiService
-      .fetchManufacturers()
-      .then((data) => {
-        console.log('✅ Manufacturers test:', data);
-      })
-      .catch((error) => {
-        console.error('❌ Manufacturers test failed:', error);
-      });
-  };
-
-  console.log('🔧 Development helpers:');
-  console.log('  - window.testMuchandyHero()');
-  console.log('  - window.testApiService()');
-  console.log('  - window.debugMuchandyHero()');
+  console.log('🔧 StoryblokComponent development helpers:');
+  console.log('  - window.EnhancedMuchandyHero - Hero class');
+  console.log('  - window.testMuchandyHero() - Test hero creation');
 }
 
-console.log('✅ StoryblokComponent ready with data loading fixes!');
+console.log('✅ StoryblokComponent fixed with proper data loading!');

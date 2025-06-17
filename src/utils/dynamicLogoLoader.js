@@ -1,8 +1,6 @@
-// src/utils/dynamicLogoLoader.js - Fixed for Muchandy's Storyblok structure
+// src/utils/dynamicLogoLoader.js - Clean version with minimal logging
 import { storyblok } from '../services/storyblok.js';
 import { processStoryblokSvg } from './svgHandler.js';
-
-console.log('=== FIXED DYNAMIC LOGO LOADER ===');
 
 /**
  * Extract logo data from any Storyblok content structure - Maximum Conciseness
@@ -10,16 +8,11 @@ console.log('=== FIXED DYNAMIC LOGO LOADER ===');
  * @returns {object} Extracted logo information
  */
 const extractLogoData = (story) => {
-  console.log('=== EXTRACTING LOGOS FROM STORY ===');
-  console.log('Story structure:', story);
-
   if (!story || !story.content) {
-    console.warn('No story content available');
     return {};
   }
 
   const content = story.content;
-  console.log('Story content:', content);
 
   // Strategy 1: Direct content fields - KISS principle
   const directLogos = {
@@ -34,17 +27,12 @@ const extractLogoData = (story) => {
   };
 
   if (directLogos.main || directLogos.compact) {
-    console.log('✅ Found logos in direct content fields:', directLogos);
     return directLogos;
   }
 
   // Strategy 2: Search in body components - Algorithmic Elegance
   if (content.body && Array.isArray(content.body)) {
-    console.log('Searching in body components...');
-
     for (const blok of content.body) {
-      console.log('Checking component:', blok.component, blok);
-
       // Check for header or hero components with logos
       if (
         ['header', 'hero', 'muchandy_hero', 'site_header'].includes(
@@ -63,11 +51,6 @@ const extractLogoData = (story) => {
         };
 
         if (componentLogos.main || componentLogos.compact) {
-          console.log(
-            '✅ Found logos in component:',
-            blok.component,
-            componentLogos
-          );
           return componentLogos;
         }
       }
@@ -78,11 +61,6 @@ const extractLogoData = (story) => {
       );
 
       if (logoFields.length > 0) {
-        console.log(
-          '✅ Found logo fields in component:',
-          blok.component,
-          logoFields
-        );
         const foundLogos = {};
         logoFields.forEach((field) => {
           if (field.includes('compact') || field.includes('icon')) {
@@ -107,8 +85,6 @@ const extractLogoData = (story) => {
 
       // Check if this is an asset with filename
       if (value?.filename && key.includes('logo')) {
-        console.log(`✅ Found logo at path: ${currentPath}`, value.filename);
-
         if (key.includes('compact') || key.includes('icon')) {
           found.compact = value.filename;
         } else {
@@ -128,12 +104,8 @@ const extractLogoData = (story) => {
 
   const recursiveLogos = findLogosRecursively(content);
   if (recursiveLogos.main || recursiveLogos.compact) {
-    console.log('✅ Found logos recursively:', recursiveLogos);
     return recursiveLogos;
   }
-
-  console.warn('⚠️ No logos found in story content');
-  console.log('Available fields in content:', Object.keys(content));
 
   return {};
 };
@@ -144,16 +116,11 @@ const extractLogoData = (story) => {
  * @returns {Promise<object>} Logo URLs
  */
 export const loadLogosFromStoryblok = async (storySlug = 'home') => {
-  console.log(`=== LOADING LOGOS FROM STORYBLOK ===`);
-  console.log('Story slug:', storySlug);
-
   try {
     const story = await storyblok.getStory(storySlug);
-    console.log('✅ Story loaded successfully:', story);
 
     // Extract logo data with detailed logging
     const logoData = extractLogoData(story);
-    console.log('Extracted raw logo data:', logoData);
 
     if (!logoData.main && !logoData.compact) {
       throw new Error(
@@ -167,23 +134,16 @@ export const loadLogosFromStoryblok = async (storySlug = 'home') => {
     if (logoData.main) {
       const mainResult = processStoryblokSvg(logoData.main);
       processedLogos.main = mainResult.url || logoData.main;
-      console.log(
-        `Main logo processed: ${logoData.main} → ${processedLogos.main}`
-      );
     }
 
     if (logoData.compact) {
       const compactResult = processStoryblokSvg(logoData.compact);
       processedLogos.compact = compactResult.url || logoData.compact;
-      console.log(
-        `Compact logo processed: ${logoData.compact} → ${processedLogos.compact}`
-      );
     }
 
-    console.log('✅ Final processed logos:', processedLogos);
     return processedLogos;
   } catch (error) {
-    console.error(`❌ Failed to load logos from story "${storySlug}":`, error);
+    console.error(`Failed to load logos from story "${storySlug}":`, error);
     throw error;
   }
 };
@@ -193,9 +153,6 @@ export const loadLogosFromStoryblok = async (storySlug = 'home') => {
  * @returns {object} Fallback logo configuration
  */
 const getFallbackLogos = () => {
-  console.log('Using fallback logos with correct space ID...');
-
-  // FIXED: Use correct space ID (340558, not 177369)
   return {
     main: 'https://a.storyblok.com/f/340558/150x150/568478fef6/logo-farbe.svg',
     compact:
@@ -211,12 +168,8 @@ const getFallbackLogos = () => {
 export const createLogoConfig = async (options = {}) => {
   const { storySlug = 'home', fallbackToHardcoded = true } = options;
 
-  console.log('=== CREATING LOGO CONFIG ===');
-  console.log('Options:', options);
-
   try {
     // Try to load from Storyblok
-    console.log('Attempting to load logos from Storyblok...');
     const logos = await loadLogosFromStoryblok(storySlug);
 
     // Validate we got at least one logo
@@ -224,13 +177,11 @@ export const createLogoConfig = async (options = {}) => {
       throw new Error('No logos found in Storyblok content');
     }
 
-    console.log('✅ Successfully loaded logos from Storyblok:', logos);
     return logos;
   } catch (error) {
-    console.error('❌ Storyblok logo loading failed:', error);
+    console.error('Storyblok logo loading failed:', error);
 
     if (fallbackToHardcoded) {
-      console.log('Using hardcoded fallback logos...');
       return getFallbackLogos();
     }
 
@@ -238,64 +189,8 @@ export const createLogoConfig = async (options = {}) => {
   }
 };
 
-/**
- * Debug function to inspect story content structure
- * @param {string} storySlug - Story to inspect
- */
-export const debugStoryStructure = async (storySlug = 'home') => {
-  console.log('=== DEBUGGING STORY STRUCTURE ===');
-
-  try {
-    const story = await storyblok.getStory(storySlug);
-    console.log('Story loaded:', story);
-
-    // Show content structure
-    console.log('Content keys:', Object.keys(story.content || {}));
-
-    // Show body structure if available
-    if (story.content?.body) {
-      console.log('Body components:');
-      story.content.body.forEach((blok, index) => {
-        console.log(`  ${index}: ${blok.component}`, Object.keys(blok));
-      });
-    }
-
-    // Search for any fields containing 'logo'
-    const findLogoFields = (obj, path = '') => {
-      const logoFields = [];
-
-      if (obj && typeof obj === 'object') {
-        for (const [key, value] of Object.entries(obj)) {
-          const currentPath = path ? `${path}.${key}` : key;
-
-          if (key.includes('logo')) {
-            logoFields.push({ path: currentPath, value });
-          }
-
-          if (typeof value === 'object' && value !== null) {
-            logoFields.push(...findLogoFields(value, currentPath));
-          }
-        }
-      }
-
-      return logoFields;
-    };
-
-    const logoFields = findLogoFields(story.content);
-    console.log('All logo-related fields found:', logoFields);
-
-    return { story, logoFields };
-  } catch (error) {
-    console.error('Story debugging failed:', error);
-    throw error;
-  }
-};
-
-console.log('✅ Fixed Dynamic Logo Loader Ready');
-
 export default {
   loadLogosFromStoryblok,
   createLogoConfig,
-  debugStoryStructure,
   getFallbackLogos,
 };
