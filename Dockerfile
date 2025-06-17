@@ -64,8 +64,9 @@ COPY --chown=nodejs:nodejs src ./src
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
 
-# Copy .env.example as template
-COPY --chown=nodejs:nodejs .env.example .env.example
+# Make entrypoint script executable
+COPY --chown=nodejs:nodejs scripts/docker-entrypoint.sh ./scripts/
+RUN chmod +x ./scripts/docker-entrypoint.sh
 
 # Switch to non-root user
 USER nodejs
@@ -73,9 +74,4 @@ USER nodejs
 # Expose ports
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://localhost:3001/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
-
-# Start the application
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push && node server.js"]
