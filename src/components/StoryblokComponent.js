@@ -1,15 +1,16 @@
-// src/components/StoryblokComponent.js - Clean version without any predefined components
+// src/components/StoryblokComponent.js - Fixed async component handling
 
 import { createElement } from '../utils/componentFactory.js';
+import { componentRegistry } from './StoryblokComponentRegistry.js';
 
-console.log('=== CLEAN STORYBLOK COMPONENT RENDERER ===');
+console.log('=== STORYBLOK COMPONENT RENDERER WITH FIXED ASYNC HANDLING ===');
 
 /**
- * Renders a single Storyblok component
+ * Renders a single Storyblok component - FIXED for async components
  * @param {Object} blok - Storyblok block data
- * @returns {Promise<HTMLElement>} Rendered component element
+ * @returns {HTMLElement} Rendered component element
  */
-export async function renderComponent(blok) {
+export function renderComponent(blok) {
   if (!blok || !blok.component) {
     console.error('Invalid blok:', blok);
     return createElement('div', {
@@ -19,51 +20,92 @@ export async function renderComponent(blok) {
   }
 
   const { component } = blok;
+  console.log(`🎨 Rendering component: ${component}`);
 
   try {
-    // TODO: Add your component implementations here
-    console.warn(`Component type not implemented: ${component}`);
-    return renderUnknownComponent(blok);
+    // Special handling for MuchandyHero - direct async loading
+    if (component === 'muchandy_hero') {
+      console.log('🚀 Creating MuchandyHero with async handling...');
+
+      // Create placeholder
+      const placeholder = createElement('div', {
+        className: 'muchandy-hero-loading',
+        style: {
+          minHeight: '500px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
+        },
+      });
+
+      placeholder.innerHTML = `
+        <div style="text-align: center;">
+          <div style="
+            width: 60px;
+            height: 60px;
+            border: 4px solid #ddd;
+            border-top-color: #007bff;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+          "></div>
+          <h2 style="color: #333; margin: 0 0 10px 0;">Lade Preisrechner...</h2>
+          <p style="color: #666; margin: 0;">Einen Moment bitte</p>
+        </div>
+        <style>
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+
+      // Load and initialize asynchronously
+      (async () => {
+        try {
+          console.log('📦 Loading StoryblokMuchandyHero module...');
+          const { default: StoryblokMuchandyHero } = await import(
+            './StoryblokMuchandyHero.js'
+          );
+
+          console.log('🔨 Creating hero instance...');
+          const heroWrapper = StoryblokMuchandyHero(blok);
+
+          console.log('⏳ Getting hero element...');
+          const heroElement = heroWrapper.getElement();
+
+          console.log('🔄 Replacing placeholder with hero...');
+          // CRITICAL FIX: Ensure we're in the DOM before replacing
+          if (placeholder.parentNode) {
+            placeholder.parentNode.replaceChild(heroElement, placeholder);
+            console.log('✅ Hero successfully inserted into DOM');
+          } else {
+            console.error('❌ Placeholder has no parent - cannot insert hero');
+          }
+        } catch (error) {
+          console.error('❌ Failed to load MuchandyHero:', error);
+
+          if (placeholder.parentNode) {
+            placeholder.innerHTML = `
+              <div style="padding: 2rem; background: #fee; border: 1px solid #fcc; border-radius: 4px; margin: 1rem 0;">
+                <h3 style="color: #c00;">Failed to load MuchandyHero</h3>
+                <p>${error.message}</p>
+              </div>
+            `;
+          }
+        }
+      })();
+
+      return placeholder;
+    }
+
+    // Use registry for other components
+    const instance = componentRegistry.create(component, blok);
+    return instance.getElement();
   } catch (error) {
     console.error(`Error rendering component ${component}:`, error);
     return renderErrorComponent(component, error);
   }
-}
-
-/**
- * Renders an unknown component placeholder
- */
-function renderUnknownComponent(blok) {
-  console.warn(`Unknown component type: ${blok.component}`, blok);
-
-  const placeholder = createElement('div', {
-    className: 'storyblok-unknown-component',
-    style: {
-      padding: '2rem',
-      background: '#f8f9fa',
-      border: '2px dashed #dee2e6',
-      borderRadius: '8px',
-      textAlign: 'center',
-      margin: '1rem 0',
-    },
-  });
-
-  placeholder.innerHTML = `
-    <h3 style="color: #6c757d; margin: 0 0 1rem 0;">
-      📦 Component: ${blok.component}
-    </h3>
-    <p style="color: #868e96; margin: 0 0 1rem 0;">
-      This component type is not yet implemented.
-    </p>
-    <details style="text-align: left; max-width: 500px; margin: 0 auto;">
-      <summary style="cursor: pointer; color: #495057;">Show Component Data</summary>
-      <pre style="background: #f1f3f4; padding: 1rem; border-radius: 4px; overflow: auto; font-size: 0.75rem;">
-${JSON.stringify(blok, null, 2)}
-      </pre>
-    </details>
-  `;
-
-  return placeholder;
 }
 
 /**
@@ -91,11 +133,11 @@ function renderErrorComponent(componentType, error) {
 }
 
 /**
- * Renders multiple components
+ * Renders multiple components - FIXED to handle async properly
  * @param {Array} components - Array of component blocks
- * @returns {Promise<DocumentFragment>} Document fragment containing all rendered elements
+ * @returns {DocumentFragment} Document fragment containing all rendered elements
  */
-export async function renderStoryblokComponents(components) {
+export function renderStoryblokComponents(components) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', components?.length || 0);
 
@@ -105,49 +147,32 @@ export async function renderStoryblokComponents(components) {
   }
 
   const fragment = document.createDocumentFragment();
-  const errors = [];
 
-  for (let i = 0; i < components.length; i++) {
-    const component = components[i];
-    console.log(`=== RENDERING COMPONENT ${i + 1} ===`);
-    console.log('Component type:', component.component);
+  components.forEach((component, index) => {
+    console.log(`Rendering component ${index + 1}:`, component.component);
 
     try {
-      const element = await renderComponent(component);
+      const element = renderComponent(component);
       if (element) {
+        // Ensure async components get properly tracked
+        element.setAttribute('data-component-index', index);
+        element.setAttribute('data-component-type', component.component);
         fragment.appendChild(element);
-        console.log(
-          `✅ Component ${i + 1} (${component.component}) rendered successfully`
-        );
       }
     } catch (error) {
-      console.error('❌ Component rendering failed:', error);
-      errors.push({ component, error });
-
-      // Add error placeholder
-      const errorElement = renderErrorComponent(component.component, error);
-      fragment.appendChild(errorElement);
+      console.error('Component rendering failed:', error);
+      fragment.appendChild(renderErrorComponent(component.component, error));
     }
-  }
+  });
 
-  if (errors.length > 0) {
-    console.error('=== COMPONENT RENDERING ERRORS ===');
-    errors.forEach(({ component, error }) => {
-      console.error(`Component ${component.component}:`, error);
-    });
-  }
-
-  console.log(
-    `✅ Component rendering complete: ${components.length - errors.length} success, ${errors.length} errors`
-  );
-
+  console.log('✅ Component rendering complete');
   return fragment;
 }
 
-// Export everything that might be needed
+// Export everything
 export default {
   renderComponent,
   renderStoryblokComponents,
 };
 
-console.log('✅ Clean StoryblokComponent ready for custom implementations!');
+console.log('✅ StoryblokComponent renderer ready with fixed async handling');
