@@ -147,7 +147,7 @@ function renderErrorComponent(componentType, error) {
  * @param {Array} components - Array of component blocks
  * @returns {Promise<Array<HTMLElement>>} Array of rendered elements
  */
-export async function renderComponents(components) {
+export async function renderStoryblokComponents(components) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', components.length);
 

@@ -2,9 +2,11 @@
 
 import { MuchandyComponent } from './MuchandyComponent.js';
 import { appState } from '../utils/stateStore.js';
-import MuchandyHero from 'svarog-ui-core';
-import PhoneRepairForm from 'svarog-ui-core';
-import UsedPhonePriceForm from 'svarog-ui-core';
+import {
+  MuchandyHero,
+  PhoneRepairForm,
+  UsedPhonePriceForm,
+} from 'svarog-ui-core';
 
 /**
  * MuchandyHeroWrapper - Handles service integration and form creation
