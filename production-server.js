@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // production-server.js - Works with both SQLite and PostgreSQL
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
@@ -198,7 +199,7 @@ async function start() {
     try {
       const count = await prisma.manufacturer.count();
       console.log(`📊 Database has ${count} manufacturers`);
-    } catch (error) {
+    } catch {
       // Tables don't exist, create them
       console.log('📋 Tables not found, creating schema...');
       await setupDatabase();
