@@ -1,4 +1,4 @@
-// src/services/headerService.js - Enhanced with strict Storyblok-first approach
+// src/services/headerService.js - Fixed to handle Storyblok link objects
 import { appState } from '../utils/stateStore.js';
 import { storyblok } from './storyblok.js';
 
@@ -158,8 +158,30 @@ class HeaderService {
       } else if (content.navigation_items.length === 0) {
         errors.push("'navigation_items' array cannot be empty");
       } else {
-        // Validate each navigation item
-        content.navigation_items.forEach((item, index) => {
+        // Filter out empty items first, then validate
+        const validItems = content.navigation_items.filter((item) => {
+          const hasComponent = item.component === 'nav_item';
+          const hasLabel = item.label && item.label.trim();
+          const hasUrl = this.extractUrl(item.url);
+
+          // Skip completely empty items (they're probably placeholders)
+          if (!hasComponent && !hasLabel && !hasUrl) {
+            console.log('📋 Skipping empty navigation item');
+            return false;
+          }
+
+          return true;
+        });
+
+        // Check if we have any valid items after filtering
+        if (validItems.length === 0) {
+          errors.push(
+            "'navigation_items' has no valid items after filtering empty ones"
+          );
+        }
+
+        // Validate each remaining navigation item
+        validItems.forEach((item, index) => {
           if (!item.component || item.component !== 'nav_item') {
             errors.push(
               `navigation_items[${index}] must have component: 'nav_item'`
@@ -168,7 +190,10 @@ class HeaderService {
           if (!item.label || item.label.trim() === '') {
             errors.push(`navigation_items[${index}] missing required 'label'`);
           }
-          if (!item.url || item.url.trim() === '') {
+
+          // Improved URL validation - handle both string and object URLs
+          const url = this.extractUrl(item.url);
+          if (!url || url.trim() === '') {
             errors.push(`navigation_items[${index}] missing required 'url'`);
           }
         });
@@ -200,7 +225,62 @@ class HeaderService {
   }
 
   /**
-   * Transform Storyblok content to header config - Algorithmic Elegance
+   * Extract URL from Storyblok URL field (handles both string and object formats)
+   * @param {string|object} urlField - Storyblok URL field
+   * @returns {string} Extracted URL
+   */
+  extractUrl(urlField) {
+    if (!urlField) return '';
+
+    // If it's already a string, return it
+    if (typeof urlField === 'string') {
+      return urlField.trim();
+    }
+
+    // If it's a Storyblok link object, check in order of preference
+    if (typeof urlField === 'object') {
+      // Try cached_url first (most reliable)
+      if (urlField.cached_url && urlField.cached_url.trim()) {
+        return urlField.cached_url.trim();
+      }
+
+      // Try url field
+      if (urlField.url && urlField.url.trim()) {
+        return urlField.url.trim();
+      }
+
+      // Try story link
+      if (urlField.story && urlField.story.url && urlField.story.url.trim()) {
+        return urlField.story.url.trim();
+      }
+
+      // If all fields are empty, return empty string (don't warn for empty items)
+      if (!urlField.url && !urlField.cached_url && !urlField.story) {
+        return '';
+      }
+
+      console.warn('⚠️ URL object has no usable URL:', urlField);
+      return '';
+    }
+
+    return '';
+  }
+
+  /**
+   * Extract target from Storyblok URL field
+   * @param {string|object} urlField - Storyblok URL field
+   * @param {string} fallback - Fallback target
+   * @returns {string} Target value
+   */
+  extractTarget(urlField, fallback = '_self') {
+    if (typeof urlField === 'object' && urlField.target) {
+      return urlField.target;
+    }
+    return fallback;
+  }
+
+  /**
+   * Transform Storyblok content to header config - Fixed URL handling
    */
   transformStoryToConfig(content) {
     console.log('🔄 Transforming Storyblok content to header config...');
@@ -217,17 +297,30 @@ class HeaderService {
           content.logo_url?.filename ||
           null,
 
-        // Transform navigation items - REQUIRED from Storyblok
+        // Transform navigation items - FIXED URL handling and empty item filtering
         navigation: {
           items: content.navigation_items
-            .filter(
-              (item) => item.component === 'nav_item' && item.label && item.url
-            )
+            .filter((item) => {
+              // Filter out empty/incomplete items
+              const hasComponent = item.component === 'nav_item';
+              const hasLabel = item.label && item.label.trim();
+              const hasUrl = this.extractUrl(item.url);
+
+              // Log what we're filtering out
+              if (!hasComponent || !hasLabel || !hasUrl) {
+                console.log(
+                  `📋 Filtering out incomplete nav item: ${item.label || 'unnamed'}`
+                );
+                return false;
+              }
+
+              return true;
+            })
             .map((item) => ({
               id: this.generateNavId(item.label),
               label: item.label.trim(),
-              href: item.url.trim(),
-              target: item.target || '_self',
+              href: this.extractUrl(item.url), // FIXED: Use helper method
+              target: this.extractTarget(item.url, item.target || '_self'), // FIXED: Extract target properly
               icon: item.icon?.filename || null,
             })),
         },
