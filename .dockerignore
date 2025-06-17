@@ -14,9 +14,8 @@ dist/
 build/
 
 # Database (will be created in container)
-*.db
+
 *.db-journal
-prisma/dev.db
 
 # IDE
 .vscode/
