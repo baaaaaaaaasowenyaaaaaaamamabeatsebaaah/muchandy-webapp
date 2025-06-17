@@ -74,4 +74,18 @@ USER nodejs
 # Expose ports
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push && node server.js"]
+# Add health check with more time
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=5 \
+    CMD node -e "fetch('http://localhost:3001/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
+# Direct startup with detailed logging
+CMD ["sh", "-c", "echo '🚀 Starting container...' && \
+     echo '📁 Current directory:' && pwd && \
+     echo '📋 Files in directory:' && ls -la && \
+     echo '🗄️ Database URL: '${DATABASE_URL} && \
+     echo '🔧 Running Prisma migrations...' && \
+     npx prisma migrate deploy --skip-generate || \
+     (echo '⚠️ Migrations failed, trying db push...' && npx prisma db push --skip-generate) && \
+     echo '✅ Database ready' && \
+     echo '🌐 Starting server on port '${PORT:-3001} && \
+     node server.js"]
