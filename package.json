@@ -29,7 +29,11 @@
     "clean": "rm -rf dist/ node_modules/.cache .storyblok-cache",
     "test:api": "node api-test.js",
     "test:api:direct": "API_PORT=3001 node api-test.js",
-    "build:railway": "node scripts/prepare-railway.js && npx prisma generate && vite build",
+    "db:push": "prisma db push",
+    "db:seed": "node scripts/railway-setup.js",
+    "railway:setup": "npm run db:push && npm run db:seed",
+    "build:railway": "node scripts/prepare-railway.js && npx prisma generate && npm run db:push && vite build",
+    "postinstall": "npx prisma generate",
     "start:railway": "node production-server.js",
     "start": "node production-server.js"
   },

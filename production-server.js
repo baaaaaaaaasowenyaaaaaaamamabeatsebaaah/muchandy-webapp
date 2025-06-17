@@ -3,6 +3,32 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+// production-server.js - Add this function after imports
+import { execSync } from 'child_process';
+
+async function setupDatabase() {
+  console.log('🔄 Setting up database schema...');
+
+  try {
+    // For PostgreSQL on Railway, we need to push the schema
+    console.log('📊 Pushing schema to database...');
+    execSync('npx prisma db push --skip-generate', { stdio: 'inherit' });
+    console.log('✅ Database schema created');
+
+    // Now initialize with data
+    await initDatabase();
+  } catch (error) {
+    console.error('❌ Database setup failed:', error);
+    // Try alternative approach
+    try {
+      console.log('🔄 Trying alternative setup...');
+      execSync('npx prisma generate', { stdio: 'inherit' });
+      execSync('npx prisma db push', { stdio: 'inherit' });
+    } catch (altError) {
+      console.error('❌ Alternative setup also failed:', altError);
+    }
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -161,18 +187,29 @@ app.get('*', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
-// Start server
+/// Update your start function
 async function start() {
   try {
     // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected');
 
+    // Check if tables exist
+    try {
+      const count = await prisma.manufacturer.count();
+      console.log(`📊 Database has ${count} manufacturers`);
+    } catch (error) {
+      // Tables don't exist, create them
+      console.log('📋 Tables not found, creating schema...');
+      await setupDatabase();
+    }
+
     // Initialize with sample data
     await initDatabase();
   } catch (error) {
     console.error('⚠️ Database connection failed:', error.message);
-    console.log('🔄 Continuing with API fallbacks...');
+    console.log('🔄 Attempting to create schema...');
+    await setupDatabase();
   }
 
   app.listen(PORT, () => {
