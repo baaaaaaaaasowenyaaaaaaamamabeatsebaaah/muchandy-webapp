@@ -10,7 +10,7 @@
     "dev:full": "concurrently \"npm run dev:api\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview --host",
-    "api": "node server.js",
+    "start": "node server.js",
     "db:setup": "npx prisma generate && npx prisma migrate dev",
     "db:studio": "npx prisma studio",
     "db:reset": "npx prisma migrate reset --force",
@@ -28,9 +28,7 @@
     "start:prod": "NODE_ENV=production npm start",
     "clean": "rm -rf dist/ node_modules/.cache .storyblok-cache",
     "test:api": "node api-test.js",
-    "test:api:direct": "API_PORT=3001 node api-test.js",
-    "start": "node production-server.js",
-    "build:railway": "node scripts/prepare-railway.js && npx prisma generate && npm run build"
+    "test:api:direct": "API_PORT=3001 node api-test.js"
   },
   "keywords": [
     "muchandy",
