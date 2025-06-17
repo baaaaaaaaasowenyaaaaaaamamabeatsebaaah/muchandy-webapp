@@ -355,6 +355,8 @@ class ApiService {
       name: item.name || 'Unknown',
       model: item.model || item.name || 'Unknown',
       manufacturerId: String(item.manufacturerId || item.manufacturer_id),
+      // Add manufacturer name if included
+      manufacturerName: item.manufacturer?.name || '',
     }));
   }
 
@@ -448,7 +450,139 @@ class ApiService {
   }
 
   /**
-   * Fetch actions (repair types) with caching
+   * Fetch actions by device - NEW METHOD - maps to GET /api/device/{deviceId}/actions
+   */
+  async fetchActionsByDevice(deviceId) {
+    const cacheKey = `actions_device_${deviceId}`;
+    console.log(`🔧 Fetching actions for device ${deviceId}...`);
+
+    // Check state
+    const stateKey = `api.actions.device.${deviceId}`;
+    const stateData = appState.get(stateKey);
+    if (stateData?.length > 0) {
+      console.log(`✅ Actions from state: ${stateData.length}`);
+      return stateData;
+    }
+
+    // Check cache
+    const cached = this.getFromCache(cacheKey);
+    if (cached) {
+      appState.set(stateKey, cached);
+      return cached;
+    }
+
+    try {
+      const data = await this.get(`/api/device/${deviceId}/actions`);
+      const transformed = data.map((action) => ({
+        id: String(action.id),
+        name: action.name,
+        deviceId: String(action.deviceId),
+        latestPrice: action.latestPrice,
+        priceDate: action.priceDate,
+      }));
+
+      // Save to cache and state
+      this.saveToCache(cacheKey, transformed);
+      appState.set(stateKey, transformed);
+
+      return transformed;
+    } catch (error) {
+      console.error('❌ Failed to fetch device actions:', error);
+
+      // Try expired cache
+      const expiredCache = safeStorage.get(`${this.cachePrefix}${cacheKey}`);
+      if (expiredCache) {
+        const { data } = expiredCache;
+        console.log('📦 Using expired cache for actions');
+        appState.set(stateKey, data);
+        return data;
+      }
+
+      // Fallback
+      return this.getFallbackActions();
+    }
+  }
+
+  /**
+   * Fetch price by actionId - NEW METHOD - maps to GET /api/price?actionId={id}
+   */
+  async fetchPriceByAction(actionId) {
+    const cacheKey = `price_action_${actionId}`;
+    console.log(`💰 Fetching price for action ${actionId}...`);
+
+    // Check cache
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const data = await this.get(`/api/price?actionId=${actionId}`);
+      const price = {
+        amount: data.price * 100, // Convert to cents
+        currency: data.currency || 'EUR',
+        formatted: data.formatted || `${data.price} €`,
+        price: data.price,
+        actionId: data.actionId,
+        actionName: data.actionName,
+        deviceId: data.deviceId,
+        deviceName: data.deviceName,
+        manufacturerId: data.manufacturerId,
+        manufacturerName: data.manufacturerName,
+      };
+
+      // Cache for 5 minutes
+      const oldExpiry = this.cacheExpiry;
+      this.cacheExpiry = 5 * 60 * 1000;
+      this.saveToCache(cacheKey, price);
+      this.cacheExpiry = oldExpiry;
+
+      return price;
+    } catch (error) {
+      console.error('❌ Failed to fetch action price:', error);
+
+      // Try expired cache
+      const expiredCache = safeStorage.get(`${this.cachePrefix}${cacheKey}`);
+      if (expiredCache) {
+        const { data } = expiredCache;
+        console.log('📦 Using expired cache for price');
+        return data;
+      }
+
+      // Fallback
+      return this.getFallbackPrice(null, actionId);
+    }
+  }
+
+  /**
+   * Fetch all prices for a device - NEW METHOD - maps to GET /api/device/{deviceId}/prices
+   */
+  async fetchDevicePrices(deviceId) {
+    const cacheKey = `prices_device_${deviceId}`;
+    console.log(`💰 Fetching all prices for device ${deviceId}...`);
+
+    // Check cache
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const data = await this.get(`/api/device/${deviceId}/prices`);
+
+      // Transform to expected format
+      const prices = data.map((item) => ({
+        actionId: String(item.actionId),
+        actionName: item.actionName,
+        prices: item.prices,
+      }));
+
+      this.saveToCache(cacheKey, prices);
+      return prices;
+    } catch (error) {
+      console.error('❌ Failed to fetch device prices:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch actions (repair types) with caching - KEEPING ORIGINAL METHOD
    */
   async fetchActionsByDevice(deviceId) {
     const cacheKey = deviceId ? `actions_${deviceId}` : 'actions_all';
@@ -471,7 +605,7 @@ class ApiService {
 
     try {
       const endpoint = deviceId
-        ? `/api/actions?deviceId=${deviceId}`
+        ? `/api/device/${deviceId}/actions`
         : '/api/actions';
 
       const data = await this.get(endpoint);
@@ -517,6 +651,9 @@ class ApiService {
       name: item.name || 'Unknown',
       description: item.description || '',
       category: item.category || 'repair',
+      deviceId: String(item.deviceId || item.device_id),
+      latestPrice: item.latestPrice || null,
+      priceDate: item.priceDate || null,
     }));
   }
 
@@ -554,54 +691,18 @@ class ApiService {
   }
 
   /**
-   * Fetch price for repair
+   * Fetch price for repair - DEPRECATED - use fetchPriceByAction instead
    */
   async fetchPrice(deviceId, actionId) {
-    if (!deviceId || !actionId) {
-      console.warn('⚠️ Missing device or action ID');
-      return null;
+    console.warn('⚠️ fetchPrice is deprecated, use fetchPriceByAction instead');
+
+    // If only one parameter, assume it's actionId
+    if (arguments.length === 1) {
+      return this.fetchPriceByAction(deviceId);
     }
 
-    const cacheKey = `price_${deviceId}_${actionId}`;
-    console.log(
-      `💰 Fetching price for device ${deviceId}, action ${actionId}...`
-    );
-
-    // Check cache
-    const cached = this.getFromCache(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    try {
-      const data = await this.post('/api/price', { deviceId, actionId });
-      const price = {
-        amount: data.price || data.amount || 0,
-        currency: data.currency || 'EUR',
-        formatted: this.formatPrice(data.price || data.amount || 0),
-      };
-
-      // Cache for shorter time (5 minutes)
-      const oldExpiry = this.cacheExpiry;
-      this.cacheExpiry = 5 * 60 * 1000;
-      this.saveToCache(cacheKey, price);
-      this.cacheExpiry = oldExpiry;
-
-      return price;
-    } catch (error) {
-      console.error('❌ Failed to fetch price:', error);
-
-      // Try expired cache
-      const expiredCache = safeStorage.get(`${this.cachePrefix}${cacheKey}`);
-      if (expiredCache) {
-        const { data } = expiredCache;
-        console.log('📦 Using expired cache for price');
-        return data;
-      }
-
-      // Fallback
-      return this.getFallbackPrice(deviceId, actionId);
-    }
+    // Otherwise use the new method
+    return this.fetchPriceByAction(actionId);
   }
 
   /**
@@ -629,9 +730,10 @@ class ApiService {
 
     const amount = basePrice[actionId] || 99;
     return {
-      amount,
+      amount: amount * 100, // Convert to cents
       currency: 'EUR',
       formatted: this.formatPrice(amount),
+      price: amount,
     };
   }
 

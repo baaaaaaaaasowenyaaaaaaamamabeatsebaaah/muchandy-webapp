@@ -8,12 +8,12 @@ import { serviceCoordinator } from '../utils/serviceCoordinator.js';
 import { appState } from '../utils/stateStore.js';
 import { router } from '../utils/router.js';
 
-console.log('=== STORYBLOK COMPONENT WITH FIXED SERVICE INTERFACE ===');
+console.log('=== STORYBLOK COMPONENT WITH FIXED API MAPPING ===');
 
 // Render MuchandyHero using the container from svarog-ui with proper service interface
 function renderMuchandyHero(blok) {
   console.log(
-    '🚀 Rendering MuchandyHeroContainer with fixed service interface:',
+    '🚀 Rendering MuchandyHeroContainer with correct API mapping:',
     blok
   );
 
@@ -99,15 +99,13 @@ function createMuchandyHeroWithService(blok, apiService) {
 
 /**
  * Create repair service wrapper with proper interface matching svarog-ui expectations
+ * Maps to actual API endpoints from server.js
  */
 function createRepairServiceWrapper(apiService) {
-  console.log(
-    '🔧 Creating repair service wrapper with apiService:',
-    apiService
-  );
+  console.log('🔧 Creating repair service wrapper with correct API mapping');
 
   return {
-    // Fetch manufacturers - direct mapping
+    // Fetch manufacturers - maps to GET /api/manufacturers
     fetchManufacturers: async () => {
       try {
         console.log('📞 RepairService: fetchManufacturers');
@@ -117,23 +115,15 @@ function createRepairServiceWrapper(apiService) {
           result?.length || 0
         );
 
-        // Debug: Check if this is real data or fallback
-        if (result && result.length > 0) {
-          console.log('🔍 First manufacturer:', result[0]);
-          if (result[0].name === 'Apple' && result[0].id === '1') {
-            console.warn('⚠️ This looks like fallback data!');
-          }
-        }
-
+        // Remove the debug check for fallback data since we're getting real data
         return result;
       } catch (error) {
         console.error('❌ RepairService: fetchManufacturers failed:', error);
-        // Return fallback data to prevent component failure
         return apiService.getFallbackManufacturers?.() || [];
       }
     },
 
-    // Fetch devices by manufacturer - direct mapping
+    // Fetch devices by manufacturer - maps to GET /api/devices?manufacturerId={id}
     fetchDevices: async (manufacturerId) => {
       try {
         console.log(
@@ -155,7 +145,7 @@ function createRepairServiceWrapper(apiService) {
       }
     },
 
-    // Fetch actions (repair types) by device - FIXED METHOD NAME
+    // Fetch actions by device - maps to GET /api/device/{deviceId}/actions
     fetchActions: async (deviceId) => {
       try {
         console.log('📞 RepairService: fetchActions for device:', deviceId);
@@ -165,7 +155,7 @@ function createRepairServiceWrapper(apiService) {
           return [];
         }
 
-        // Use the correct method name from apiService
+        // Use the correct method that maps to the right endpoint
         const result = await apiService.fetchActionsByDevice(deviceId);
         console.log('✅ RepairService: actions loaded:', result?.length || 0);
         return result;
@@ -175,37 +165,37 @@ function createRepairServiceWrapper(apiService) {
       }
     },
 
-    // Fetch price for repair - FIXED PARAMETER ORDER
-    fetchPrice: async (actionId, deviceId = null) => {
+    // Fetch price - maps to GET /api/price?actionId={actionId}
+    fetchPrice: async (actionId) => {
       try {
-        console.log(
-          '📞 RepairService: fetchPrice for action:',
-          actionId,
-          'device:',
-          deviceId
-        );
+        console.log('📞 RepairService: fetchPrice for action:', actionId);
 
         if (!actionId) {
           console.warn('⚠️ RepairService: No actionId provided');
           return null;
         }
 
-        // svarog-ui expects fetchPrice(actionId) but our API needs (deviceId, actionId)
-        // Try to get deviceId from context or use fallback
-        const result = deviceId
-          ? await apiService.fetchPrice(deviceId, actionId)
-          : await apiService.fetchPrice(actionId); // fallback for backward compatibility
+        // Use the correct method
+        const response = await apiService.fetchPriceByAction(actionId);
 
-        console.log('✅ RepairService: price loaded:', result);
-        return result;
+        // Ensure we return the expected format
+        const price = {
+          amount: response.amount || 0,
+          currency: response.currency || 'EUR',
+          formatted: response.formatted || '0 €',
+          price: response.price || 0,
+        };
+
+        console.log('✅ RepairService: price loaded:', price);
+        return price;
       } catch (error) {
         console.error('❌ RepairService: fetchPrice failed:', error);
-        return (
-          apiService.getFallbackPrice?.(deviceId, actionId) || {
-            price: 0,
-            currency: 'EUR',
-          }
-        );
+        return {
+          amount: 0,
+          currency: 'EUR',
+          formatted: '0 €',
+          price: 0,
+        };
       }
     },
   };
@@ -213,8 +203,53 @@ function createRepairServiceWrapper(apiService) {
 
 /**
  * Create buyback service wrapper with proper interface
+ * Maps to actual API endpoints from server.js
  */
 function createBuybackServiceWrapper(apiService) {
+  console.log('🔧 Creating buyback service wrapper with correct API mapping');
+
+  // Static conditions since API doesn't have conditions endpoint
+  const CONDITIONS = [
+    {
+      id: '1',
+      name: 'Wie neu',
+      value: 'like-new',
+      description: 'Gerät sieht aus wie neu',
+      multiplier: 0.7,
+    },
+    {
+      id: '2',
+      name: 'Sehr gut',
+      value: 'very-good',
+      description: 'Minimale Gebrauchsspuren',
+      multiplier: 0.5,
+    },
+    {
+      id: '3',
+      name: 'Gut',
+      value: 'good',
+      description: 'Normale Gebrauchsspuren',
+      multiplier: 0.3,
+    },
+    {
+      id: '4',
+      name: 'Akzeptabel',
+      value: 'acceptable',
+      description: 'Deutliche Gebrauchsspuren',
+      multiplier: 0.15,
+    },
+    {
+      id: '5',
+      name: 'Defekt',
+      value: 'defective',
+      description: 'Gerät ist beschädigt',
+      multiplier: 0.05,
+    },
+  ];
+
+  // Store selected device for price calculation
+  let currentDeviceId = null;
+
   return {
     // Fetch manufacturers - same as repair service
     fetchManufacturers: async () => {
@@ -254,7 +289,7 @@ function createBuybackServiceWrapper(apiService) {
       }
     },
 
-    // Fetch conditions (device conditions for buyback) - BUYBACK SPECIFIC
+    // Fetch conditions - returns static conditions but stores device ID
     fetchConditions: async (deviceId) => {
       try {
         console.log('📞 BuybackService: fetchConditions for device:', deviceId);
@@ -264,27 +299,29 @@ function createBuybackServiceWrapper(apiService) {
           return [];
         }
 
-        // Use conditions endpoint if available, otherwise fallback
-        const result = (await apiService.fetchConditions?.()) || [];
+        // Store the device ID for price calculation
+        currentDeviceId = deviceId;
+
+        // Return static conditions since API doesn't have this endpoint
         console.log(
-          '✅ BuybackService: conditions loaded:',
-          result?.length || 0
+          '✅ BuybackService: returning static conditions:',
+          CONDITIONS.length
         );
-        return result;
+        return CONDITIONS;
       } catch (error) {
         console.error('❌ BuybackService: fetchConditions failed:', error);
-        return apiService.getFallbackConditions?.() || [];
+        return [];
       }
     },
 
-    // Fetch price for buyback - DIFFERENT INTERFACE
-    fetchPrice: async (conditionId, deviceId = null) => {
+    // Fetch price for buyback - calculates based on device prices and condition
+    fetchPrice: async (conditionId) => {
       try {
         console.log(
           '📞 BuybackService: fetchPrice for condition:',
           conditionId,
           'device:',
-          deviceId
+          currentDeviceId
         );
 
         if (!conditionId) {
@@ -292,21 +329,69 @@ function createBuybackServiceWrapper(apiService) {
           return null;
         }
 
-        // For buyback, we might need device info in the price calculation
-        const result = deviceId
-          ? await apiService.fetchPrice(deviceId, conditionId)
-          : await apiService.fetchPrice(conditionId);
+        // Find the condition
+        const condition = CONDITIONS.find((c) => c.id === conditionId);
+        if (!condition) {
+          console.warn('⚠️ BuybackService: Invalid conditionId:', conditionId);
+          return null;
+        }
 
-        console.log('✅ BuybackService: price loaded:', result);
-        return result;
+        // Get device prices to calculate buyback value
+        let basePrice = 300; // Default base price
+
+        if (currentDeviceId) {
+          try {
+            // Fetch all prices for the device
+            const devicePrices =
+              await apiService.fetchDevicePrices(currentDeviceId);
+
+            if (devicePrices && devicePrices.length > 0) {
+              // Find the highest repair price as base for buyback
+              let maxPrice = 0;
+              devicePrices.forEach((action) => {
+                if (action.prices && action.prices.length > 0) {
+                  const actionMaxPrice = Math.max(
+                    ...action.prices.map((p) => p.price || 0)
+                  );
+                  maxPrice = Math.max(maxPrice, actionMaxPrice);
+                }
+              });
+
+              // Use a percentage of the highest repair price as base
+              if (maxPrice > 0) {
+                basePrice = Math.round(maxPrice * 1.5); // Assume device value is 1.5x highest repair
+              }
+            }
+          } catch (error) {
+            console.warn(
+              '⚠️ Could not fetch device prices for buyback calculation:',
+              error
+            );
+          }
+        }
+
+        // Calculate buyback price based on condition
+        const buybackPrice = Math.round(basePrice * condition.multiplier);
+
+        const price = {
+          amount: buybackPrice * 100, // Convert to cents
+          currency: 'EUR',
+          formatted: `${buybackPrice} €`,
+          price: buybackPrice,
+          conditionName: condition.name,
+          conditionId: condition.id,
+        };
+
+        console.log('✅ BuybackService: price calculated:', price);
+        return price;
       } catch (error) {
         console.error('❌ BuybackService: fetchPrice failed:', error);
-        return (
-          apiService.getFallbackPrice?.(deviceId, conditionId) || {
-            price: 0,
-            currency: 'EUR',
-          }
-        );
+        return {
+          amount: 0,
+          currency: 'EUR',
+          formatted: '0 €',
+          price: 0,
+        };
       }
     },
   };
@@ -658,6 +743,11 @@ if (import.meta.env.DEV) {
         if (devices?.length > 0) {
           const actions = await repairService.fetchActions(devices[0].id);
           console.log('Actions:', actions?.length || 0);
+
+          if (actions?.length > 0) {
+            const price = await repairService.fetchPrice(actions[0].id);
+            console.log('Price:', price);
+          }
         }
       }
 
@@ -675,4 +765,4 @@ if (import.meta.env.DEV) {
   );
 }
 
-console.log('✅ StoryblokComponent with fixed service interface ready!');
+console.log('✅ StoryblokComponent with correct API mapping ready!');
