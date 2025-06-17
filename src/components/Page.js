@@ -102,6 +102,7 @@ export class EnhancedPage extends MuchandyComponent {
 
     // Create Svarog Page instance if needed
     if (!this.pageComponent) {
+      // Create with minimal config - don't pass content/children here
       this.pageComponent = SvarogPage({
         id: `muchandy-page-${this.props.slug}`,
         type: 'page',
@@ -171,10 +172,13 @@ export class EnhancedPage extends MuchandyComponent {
 
   // === CUSTOM METHODS ===
 
-  // Render story content into page - Maximum Conciseness
+  // Render story content into page - Fixed to properly pass content
   renderStoryContent() {
     const story = this.state.story;
-    if (!story?.content?.body) return;
+    if (!story?.content?.body) {
+      console.warn('⚠️ No story body content to render');
+      return;
+    }
 
     console.log('📖 Rendering story content...');
 
@@ -182,19 +186,21 @@ export class EnhancedPage extends MuchandyComponent {
       // Render Storyblok components
       const renderedContent = renderStoryblokComponents(story.content.body);
 
-      // Transform to page config
-      const pageConfig = {
-        id: story.slug,
-        type: 'page',
-        seo: this.state.seo,
-        content: {
-          html: renderedContent.outerHTML || renderedContent.innerHTML || '',
-        },
-      };
-
-      // Load into page component
-      this.pageComponent.loadFromCMS(pageConfig);
+      // FIX: Pass content properly to the page component
+      // First, clear loading state
       this.pageComponent.setLoading(false);
+
+      // Then set the actual content
+      if (renderedContent) {
+        // If renderedContent is a DOM element, wrap it properly
+        const contentWrapper = {
+          children: [renderedContent], // Wrap in array as expected by Page
+          html: renderedContent.outerHTML || renderedContent.innerHTML || '',
+        };
+
+        // Update the page content
+        this.pageComponent.setContent(contentWrapper);
+      }
 
       console.log('✅ Story content rendered');
     } catch (error) {
