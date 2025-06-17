@@ -11,7 +11,8 @@ import {
 } from 'svarog-ui-core';
 import { MuchandyComponent } from './MuchandyComponent.js';
 import { appState } from '../utils/stateStore.js';
-import { LoadPriority } from '../utils/priorityLoader.js';
+import { priorityLoader, LoadPriority } from '../utils/priorityLoader.js';
+import { serviceCoordinator } from '../utils/serviceCoordinator.js';
 
 console.log('=== ENHANCED APP WITH PHASED INITIALIZATION ===');
 
@@ -22,7 +23,7 @@ class EnhancedApp extends MuchandyComponent {
   constructor(props = {}) {
     super({ ...props, componentType: 'EnhancedApp' });
 
-    this.coordinator = new ServiceCoordinator();
+    this.coordinator = serviceCoordinator; // Use the imported singleton
     this.router = null;
     this.currentPage = null;
     this.element = null;
@@ -38,13 +39,13 @@ class EnhancedApp extends MuchandyComponent {
    */
   async initializeCritical() {
     console.log('📋 App Phase 1: Critical setup...');
-    this.updateState({ phase: 'critical-setup' });
+    this.setState({ phase: 'critical-setup' });
 
     // Register all services with proper dependencies and priorities
     this.registerServices();
 
-    // Wait for critical services
-    await this.coordinator.loader.waitForPriority(LoadPriority.CRITICAL);
+    // Wait for critical services - use priorityLoader directly
+    await priorityLoader.waitForPriority(LoadPriority.CRITICAL);
 
     console.log('✅ Critical setup complete');
   }
@@ -56,132 +57,114 @@ class EnhancedApp extends MuchandyComponent {
     console.log('📝 Registering services...');
 
     // Theme service (CRITICAL - needed before any UI)
-    this.coordinator.register(
-      'theme',
-      {
-        load: async () => {
-          console.log('  Creating theme instance...');
-          appState.set('services.theme.loading', true);
+    this.coordinator.register('theme', {
+      factory: async () => {
+        console.log('  Creating theme instance...');
+        appState.set('services.theme.loading', true);
 
-          try {
-            const { default: theme } = await import(
-              '@svarog-ui/theme-muchandy'
-            );
-            theme.apply();
+        try {
+          const { default: theme } = await import('@svarog-ui/theme-muchandy');
+          theme.apply();
 
-            appState.set('services.theme.instance', theme);
-            appState.set('services.theme.ready', true);
-          } finally {
-            appState.set('services.theme.loading', false);
-          }
-        },
+          appState.set('services.theme.instance', theme);
+          appState.set('services.theme.ready', true);
+          return theme;
+        } finally {
+          appState.set('services.theme.loading', false);
+        }
       },
-      [],
-      LoadPriority.CRITICAL
-    );
+      dependencies: [],
+      priority: LoadPriority.CRITICAL,
+    });
 
     // Storyblok service (HIGH - needed for header/footer)
-    this.coordinator.register(
-      'storyblok',
-      {
-        load: async () => {
-          console.log('  Creating storyblok instance...');
-          appState.set('services.storyblok.loading', true);
+    this.coordinator.register('storyblok', {
+      factory: async () => {
+        console.log('  Creating storyblok instance...');
+        appState.set('services.storyblok.loading', true);
 
-          const { storyblok } = await import('../services/storyblok.js');
+        const { storyblok } = await import('../services/storyblok.js');
 
-          appState.set('services.storyblok.instance', storyblok);
-          appState.set('services.storyblok.ready', true);
-          appState.set('services.storyblok.loading', false);
-        },
+        appState.set('services.storyblok.instance', storyblok);
+        appState.set('services.storyblok.ready', true);
+        appState.set('services.storyblok.loading', false);
+        return storyblok;
       },
-      [],
-      LoadPriority.HIGH
-    );
+      dependencies: [],
+      priority: LoadPriority.HIGH,
+    });
 
     // API service (HIGH - needed for forms)
-    this.coordinator.register(
-      'api',
-      {
-        load: async () => {
-          console.log('  Creating api instance...');
-          appState.set('services.api.loading', true);
+    this.coordinator.register('api', {
+      factory: async () => {
+        console.log('  Creating api instance...');
+        appState.set('services.api.loading', true);
 
-          const { apiService } = await import('../services/apiService.js');
-          await apiService.load();
+        const { apiService } = await import('../services/apiService.js');
+        await apiService.load();
 
-          appState.set('services.api.instance', apiService);
-          appState.set('services.api.ready', true);
-          appState.set('services.api.loading', false);
-        },
+        appState.set('services.api.instance', apiService);
+        appState.set('services.api.ready', true);
+        appState.set('services.api.loading', false);
+        return apiService;
       },
-      [],
-      LoadPriority.HIGH
-    );
+      dependencies: [],
+      priority: LoadPriority.HIGH,
+    });
 
     // Header service (HIGH - but depends on storyblok)
-    this.coordinator.register(
-      'header',
-      {
-        load: async () => {
-          console.log('  Creating header instance...');
-          appState.set('services.header.loading', true);
+    this.coordinator.register('header', {
+      factory: async () => {
+        console.log('  Creating header instance...');
+        appState.set('services.header.loading', true);
 
-          const { headerService } = await import(
-            '../services/headerService.js'
-          );
-          await headerService.load();
+        const { headerService } = await import('../services/headerService.js');
+        await headerService.load();
 
-          appState.set('services.header.instance', headerService);
-          appState.set('services.header.ready', true);
-          appState.set('services.header.loading', false);
-        },
+        appState.set('services.header.instance', headerService);
+        appState.set('services.header.ready', true);
+        appState.set('services.header.loading', false);
+        return headerService;
       },
-      ['storyblok'],
-      LoadPriority.HIGH
-    );
+      dependencies: ['storyblok'],
+      priority: LoadPriority.HIGH,
+    });
 
     // Footer service (HIGH - but depends on storyblok)
-    this.coordinator.register(
-      'footer',
-      {
-        load: async () => {
-          console.log('  Creating footer instance...');
-          appState.set('services.footer.loading', true);
+    this.coordinator.register('footer', {
+      factory: async () => {
+        console.log('  Creating footer instance...');
+        appState.set('services.footer.loading', true);
 
-          const { footerService } = await import(
-            '../services/footerService.js'
-          );
-          await footerService.load();
+        const { footerService } = await import('../services/footerService.js');
+        await footerService.load();
 
-          appState.set('services.footer.instance', footerService);
-          appState.set('services.footer.ready', true);
-          appState.set('services.footer.loading', false);
-        },
+        appState.set('services.footer.instance', footerService);
+        appState.set('services.footer.ready', true);
+        appState.set('services.footer.loading', false);
+        return footerService;
       },
-      ['storyblok'],
-      LoadPriority.HIGH
-    );
+      dependencies: ['storyblok'],
+      priority: LoadPriority.HIGH,
+    });
 
     // SEO service (NORMAL - depends on storyblok)
-    this.coordinator.register(
-      'seo',
-      {
-        load: async () => {
-          console.log('  Creating seo instance...');
-          appState.set('services.seo.loading', true);
+    this.coordinator.register('seo', {
+      factory: async () => {
+        console.log('  Creating seo instance...');
+        appState.set('services.seo.loading', true);
 
-          const { seoService } = await import('../services/seoService.js');
-          await seoService.load();
+        const { seoService } = await import('../services/seoService.js');
+        await seoService.load();
 
-          appState.set('services.seo.instance', seoService);
-          appState.set('services.seo.ready', true);
-          appState.set('services.seo.loading', false);
-        },
+        appState.set('services.seo.instance', seoService);
+        appState.set('services.seo.ready', true);
+        appState.set('services.seo.loading', false);
+        return seoService;
       },
-      ['storyblok'],
-      LoadPriority.NORMAL
-    );
+      dependencies: ['storyblok'],
+      priority: LoadPriority.NORMAL,
+    });
 
     console.log('✅ All services registered');
   }
@@ -191,7 +174,7 @@ class EnhancedApp extends MuchandyComponent {
    */
   async loadGlobalServices() {
     console.log('📊 App Phase 2: Loading global services...');
-    this.updateState({ phase: 'loading-services' });
+    this.setState({ phase: 'loading-services' });
 
     await this.coordinator.loadAll();
 
@@ -203,7 +186,7 @@ class EnhancedApp extends MuchandyComponent {
    */
   async createUIStructure() {
     console.log('🎯 App Phase 3: Creating UI structure...');
-    this.updateState({ phase: 'creating-ui' });
+    this.setState({ phase: 'creating-ui' });
 
     // Create the basic app structure
     this.element = createElement('div', {
@@ -281,7 +264,7 @@ class EnhancedApp extends MuchandyComponent {
    */
   async mounted() {
     console.log('✨ App Phase 4: Post-initialization...');
-    this.updateState({ phase: 'post-init' });
+    this.setState({ phase: 'post-init' });
 
     // Set up state watchers
     this.setupStateWatchers();

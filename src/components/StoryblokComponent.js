@@ -34,11 +34,22 @@ function renderMuchandyHero(blok) {
     };
   }
 
+  // Create a wrapper that matches the expected interface
+  const serviceWrapper = {
+    fetchManufacturers: () => apiService.fetchManufacturers(),
+    fetchDevices: (manufacturerId) => apiService.fetchDevices(manufacturerId),
+    fetchActions: (deviceId) => apiService.fetchActionsByDevice(deviceId),
+    fetchPrice: (deviceId, actionId) =>
+      apiService.fetchPrice(deviceId, actionId),
+    fetchConditions: () =>
+      apiService.fetchConditions?.() || Promise.resolve([]),
+  };
+
   // Create container with services from svarog-ui
   const heroContainer = MuchandyHeroContainer({
     // Services
-    repairService: apiService,
-    buybackService: apiService,
+    repairService: serviceWrapper,
+    buybackService: serviceWrapper,
 
     // Hero props from Storyblok
     backgroundImageUrl: blok.background_image?.filename || '',
