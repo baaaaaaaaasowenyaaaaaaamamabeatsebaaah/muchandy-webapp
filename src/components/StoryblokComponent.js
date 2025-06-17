@@ -1,10 +1,8 @@
-// src/components/StoryblokComponent.js
+// src/components/StoryblokComponent.js - Clean version without any predefined components
 
-import { appState } from '../utils/stateStore.js';
 import { createElement } from '../utils/componentFactory.js';
-import { MuchandyHeroWrapper } from './MuchandyHeroWrapper.js';
 
-console.log('=== STORYBLOK COMPONENT WITH FIXED API MAPPING ===');
+console.log('=== CLEAN STORYBLOK COMPONENT RENDERER ===');
 
 /**
  * Renders a single Storyblok component
@@ -23,61 +21,7 @@ export async function renderComponent(blok) {
   const { component } = blok;
 
   try {
-    // Handle muchandy_hero with our custom wrapper
-    if (component === 'muchandy_hero') {
-      console.log('🚀 Rendering MuchandyHero with custom wrapper:', blok);
-
-      // Create the wrapper instance directly
-      const heroWrapper = new MuchandyHeroWrapper({
-        title: blok.title || 'Finden Sie<br>Ihren Preis',
-        subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-        backgroundImageUrl: blok.background_image?.filename || '',
-        defaultTab: blok.default_tab || 'repair',
-        blurIntensity:
-          blok.blur_intensity !== undefined ? Number(blok.blur_intensity) : 4,
-        overlayOpacity:
-          blok.overlay_opacity !== undefined
-            ? Number(blok.overlay_opacity)
-            : 0.3,
-        className: blok.class_name || '',
-
-        // Event handlers
-        onRepairPriceChange: (data) => {
-          console.log('💰 Repair price changed:', data);
-          appState.set('forms.repair.lastPrice', data);
-        },
-        onRepairPriceClick: (data) => {
-          console.log('📞 Schedule repair clicked:', data);
-          // Handle repair scheduling
-          if (data.price && data.deviceName) {
-            alert(
-              `Reparatur für ${data.deviceName} - Preis: ${data.price.formatted}\nWir rufen Sie zurück!`
-            );
-          }
-        },
-        onBuybackPriceChange: (data) => {
-          console.log('💰 Buyback price changed:', data);
-          appState.set('forms.buyback.lastPrice', data);
-        },
-        onBuybackPriceSubmit: (data) => {
-          console.log('💸 Submit buyback clicked:', data);
-          // Handle buyback submission
-          if (data.price && data.deviceName) {
-            alert(
-              `Ankauf für ${data.deviceName} - Preis: ${data.price.formatted}\nVielen Dank für Ihre Anfrage!`
-            );
-          }
-        },
-      });
-
-      // Initialize and return element
-      const element = await heroWrapper.init();
-      console.log('✅ MuchandyHero wrapper created successfully');
-
-      return element;
-    }
-
-    // For any other component type, return a placeholder
+    // TODO: Add your component implementations here
     console.warn(`Component type not implemented: ${component}`);
     return renderUnknownComponent(blok);
   } catch (error) {
@@ -96,19 +40,26 @@ function renderUnknownComponent(blok) {
     className: 'storyblok-unknown-component',
     style: {
       padding: '2rem',
-      background: '#f0f0f0',
-      border: '2px dashed #ccc',
+      background: '#f8f9fa',
+      border: '2px dashed #dee2e6',
       borderRadius: '8px',
       textAlign: 'center',
+      margin: '1rem 0',
     },
   });
 
   placeholder.innerHTML = `
-    <h3>Unknown Component: ${blok.component}</h3>
-    <p>This component type is not yet implemented.</p>
-    <details>
-      <summary>Component Data</summary>
-      <pre>${JSON.stringify(blok, null, 2)}</pre>
+    <h3 style="color: #6c757d; margin: 0 0 1rem 0;">
+      📦 Component: ${blok.component}
+    </h3>
+    <p style="color: #868e96; margin: 0 0 1rem 0;">
+      This component type is not yet implemented.
+    </p>
+    <details style="text-align: left; max-width: 500px; margin: 0 auto;">
+      <summary style="cursor: pointer; color: #495057;">Show Component Data</summary>
+      <pre style="background: #f1f3f4; padding: 1rem; border-radius: 4px; overflow: auto; font-size: 0.75rem;">
+${JSON.stringify(blok, null, 2)}
+      </pre>
     </details>
   `;
 
@@ -127,6 +78,7 @@ function renderErrorComponent(componentType, error) {
       border: '1px solid #fcc',
       borderRadius: '4px',
       color: '#c00',
+      margin: '1rem 0',
     },
   });
 
@@ -157,14 +109,13 @@ export async function renderStoryblokComponents(components) {
 
   for (let i = 0; i < components.length; i++) {
     const component = components[i];
-    console.log('=== RENDERING COMPONENT ===');
+    console.log(`=== RENDERING COMPONENT ${i + 1} ===`);
     console.log('Component type:', component.component);
 
     try {
       const element = await renderComponent(component);
       if (element) {
         fragment.appendChild(element);
-        console.log('✅ Component rendered successfully');
         console.log(
           `✅ Component ${i + 1} (${component.component}) rendered successfully`
         );
@@ -199,4 +150,4 @@ export default {
   renderStoryblokComponents,
 };
 
-console.log('✅ StoryblokComponent with MuchandyHeroWrapper ready!');
+console.log('✅ Clean StoryblokComponent ready for custom implementations!');
