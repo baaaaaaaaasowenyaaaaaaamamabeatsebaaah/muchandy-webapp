@@ -39,6 +39,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from the dist directory in production
+if (process.env.NODE_ENV === 'production') {
+  console.log('📂 Serving static files from dist directory');
+  app.use(express.static(join(__dirname, 'dist')));
+}
+
 // Database connection test
 async function testConnection() {
   try {
@@ -598,7 +604,27 @@ app.get('/api/debug', async (req, res) => {
   });
 });
 
-// 404 handler
+// Serve index.html for all non-API routes (SPA support) in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api') || req.path === '/health') {
+      return next();
+    }
+
+    const indexPath = join(__dirname, 'dist', 'index.html');
+    console.log(`📄 Serving index.html for: ${req.path}`);
+
+    if (existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error('❌ index.html not found at:', indexPath);
+      next();
+    }
+  });
+}
+
+// 404 handler (must be last)
 app.use((req, res) => {
   console.log(`❌ 404: ${req.method} ${req.url}`);
   res.status(404).json({
@@ -631,6 +657,10 @@ app.listen(PORT, async () => {
   console.log(`📊 Stats: http://localhost:${PORT}/api/stats`);
   console.log(`🔍 Debug: http://localhost:${PORT}/api/debug`);
   console.log(`🐳 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Frontend: http://localhost:${PORT}`);
+  }
 
   // Test database connection
   const dbStatus = await testConnection();

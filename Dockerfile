@@ -68,6 +68,8 @@ RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
 COPY --chown=nodejs:nodejs scripts/docker-entrypoint.sh ./scripts/
 RUN chmod +x ./scripts/docker-entrypoint.sh
 
+COPY --chown=nodejs:nodejs prisma/dev.db /app/data/prod.db
+
 # Switch to non-root user
 USER nodejs
 
