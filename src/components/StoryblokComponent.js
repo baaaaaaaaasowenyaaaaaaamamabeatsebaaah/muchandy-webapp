@@ -2,6 +2,7 @@
 
 import { appState } from '../utils/stateStore.js';
 import { createElement } from '../utils/componentFactory.js';
+import { MuchandyHeroWrapper } from './MuchandyHeroWrapper.js';
 
 console.log('=== STORYBLOK COMPONENT WITH FIXED API MAPPING ===');
 
@@ -26,13 +27,8 @@ export async function renderComponent(blok) {
     if (component === 'muchandy_hero') {
       console.log('🚀 Rendering MuchandyHero with custom wrapper:', blok);
 
-      // Import our custom wrapper
-      const { default: createMuchandyHeroWrapper } = await import(
-        './MuchandyHeroWrapper.js'
-      );
-
-      // Create the wrapper with all props from Storyblok
-      const heroWrapper = createMuchandyHeroWrapper({
+      // Create the wrapper instance directly
+      const heroWrapper = new MuchandyHeroWrapper({
         title: blok.title || 'Finden Sie<br>Ihren Preis',
         subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
         backgroundImageUrl: blok.background_image?.filename || '',
@@ -145,13 +141,18 @@ function renderErrorComponent(componentType, error) {
 /**
  * Renders multiple components
  * @param {Array} components - Array of component blocks
- * @returns {Promise<Array<HTMLElement>>} Array of rendered elements
+ * @returns {Promise<DocumentFragment>} Document fragment containing all rendered elements
  */
 export async function renderStoryblokComponents(components) {
   console.log('=== RENDERING COMPONENTS ===');
-  console.log('Components to render:', components.length);
+  console.log('Components to render:', components?.length || 0);
 
-  const results = [];
+  if (!components || !Array.isArray(components) || components.length === 0) {
+    console.warn('No components to render');
+    return document.createDocumentFragment();
+  }
+
+  const fragment = document.createDocumentFragment();
   const errors = [];
 
   for (let i = 0; i < components.length; i++) {
@@ -161,21 +162,22 @@ export async function renderStoryblokComponents(components) {
 
     try {
       const element = await renderComponent(component);
-      results.push(element);
-      console.log('✅ Component rendered successfully');
+      if (element) {
+        fragment.appendChild(element);
+        console.log('✅ Component rendered successfully');
+        console.log(
+          `✅ Component ${i + 1} (${component.component}) rendered successfully`
+        );
+      }
     } catch (error) {
       console.error('❌ Component rendering failed:', error);
       errors.push({ component, error });
 
       // Add error placeholder
       const errorElement = renderErrorComponent(component.component, error);
-      results.push(errorElement);
+      fragment.appendChild(errorElement);
     }
   }
-
-  console.log(
-    `✅ Component ${i + 1} (${component.component}) rendered successfully`
-  );
 
   if (errors.length > 0) {
     console.error('=== COMPONENT RENDERING ERRORS ===');
@@ -185,10 +187,16 @@ export async function renderStoryblokComponents(components) {
   }
 
   console.log(
-    `✅ Component rendering complete: ${results.length} success, ${errors.length} errors`
+    `✅ Component rendering complete: ${components.length - errors.length} success, ${errors.length} errors`
   );
 
-  return results;
+  return fragment;
 }
+
+// Export everything that might be needed
+export default {
+  renderComponent,
+  renderStoryblokComponents,
+};
 
 console.log('✅ StoryblokComponent with MuchandyHeroWrapper ready!');

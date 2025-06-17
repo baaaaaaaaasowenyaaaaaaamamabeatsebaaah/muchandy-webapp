@@ -210,7 +210,12 @@ export class MuchandyHeroWrapper extends MuchandyComponent {
     // Create repair form
     this.state.repairForm = PhoneRepairForm({
       service: this.state.repairService,
-      loading: false,
+      loadingStates: {
+        manufacturers: false,
+        devices: false,
+        actions: false,
+        price: false,
+      },
       onChange: (data) => {
         console.log('📝 Repair form changed:', data);
         this.props.onRepairPriceChange?.(data);
@@ -224,7 +229,12 @@ export class MuchandyHeroWrapper extends MuchandyComponent {
     // Create buyback form
     this.state.buybackForm = UsedPhonePriceForm({
       service: this.state.buybackService,
-      loading: false,
+      loadingStates: {
+        manufacturers: false,
+        devices: false,
+        conditions: false,
+        price: false,
+      },
       onChange: (data) => {
         console.log('📝 Buyback form changed:', data);
         this.props.onBuybackPriceChange?.(data);
