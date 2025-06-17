@@ -54,7 +54,9 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files and install only production dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --only=production && npx prisma generate
+
+# Force rebuild with Express 4
+RUN npm ci --only=production --force && npx prisma generate
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
@@ -64,11 +66,13 @@ COPY --chown=nodejs:nodejs src ./src
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
 
+# Copy the database file from your repo
+COPY --chown=nodejs:nodejs prisma/dev.db /app/data/prod.db
+COPY --chown=nodejs:nodejs prisma/dev.db-journal /app/data/prod.db-journal
+
 # Make entrypoint script executable
 COPY --chown=nodejs:nodejs scripts/docker-entrypoint.sh ./scripts/
 RUN chmod +x ./scripts/docker-entrypoint.sh
-
-COPY --chown=nodejs:nodejs prisma/dev.db /app/data/prod.db
 
 # Switch to non-root user
 USER nodejs
