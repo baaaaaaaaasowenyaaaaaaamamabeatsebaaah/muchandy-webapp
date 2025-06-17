@@ -1,16 +1,27 @@
-// src/components/StoryblokComponent.js - Fixed duplicate export
+// src/components/StoryblokComponent.js - Simple synchronous version
 
 import { createElement } from '../utils/componentFactory.js';
-import { StoryblokMuchandyHero } from './StoryblokMuchandyHero.js';
 
 console.log('=== CLEAN STORYBLOK COMPONENT RENDERER ===');
+
+/**
+ * Registry for Storyblok components
+ */
+const componentRegistry = new Map();
+
+/**
+ * Register a component handler
+ */
+export function registerComponent(name, handler) {
+  componentRegistry.set(name, handler);
+}
 
 /**
  * Renders a single Storyblok component
  * @param {Object} blok - Storyblok block data
  * @returns {HTMLElement} Rendered component element
  */
-function renderComponent(blok) {
+export function renderComponent(blok) {
   if (!blok || !blok.component) {
     console.error('Invalid blok:', blok);
     return createElement('div', {
@@ -22,78 +33,59 @@ function renderComponent(blok) {
   const { component } = blok;
 
   try {
-    switch (component) {
-      case 'muchandy_hero':
-        return renderMuchandyHero(blok);
-
-      default:
-        console.warn(`Component type not implemented: ${component}`);
-        return renderUnknownComponent(blok);
+    // Check if we have a registered handler
+    const handler = componentRegistry.get(component);
+    if (handler) {
+      return handler(blok);
     }
+
+    // For MuchandyHero, create it inline
+    if (component === 'muchandy_hero') {
+      console.log('🚀 Creating MuchandyHero inline...');
+
+      // Create a placeholder that will be replaced
+      const placeholder = createElement('div', {
+        className: 'muchandy-hero-placeholder',
+        'data-blok': JSON.stringify(blok),
+      });
+
+      // Load and initialize the hero asynchronously after page loads
+      setTimeout(async () => {
+        try {
+          const { default: StoryblokMuchandyHero } = await import(
+            './StoryblokMuchandyHero.js'
+          );
+
+          // Create instance directly using constructor
+          const wrapper = new StoryblokMuchandyHero(blok);
+          const heroElement = await wrapper.render();
+
+          // Replace placeholder with actual hero
+          if (placeholder.parentNode) {
+            placeholder.parentNode.replaceChild(heroElement, placeholder);
+          }
+        } catch (error) {
+          console.error('Failed to load MuchandyHero:', error);
+          // Show error in placeholder
+          placeholder.innerHTML = `
+            <div style="padding: 2rem; background: #fee; border: 1px solid #fcc; border-radius: 4px; margin: 1rem 0;">
+              <h3 style="color: #c00;">Failed to load MuchandyHero</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      }, 0);
+
+      return placeholder;
+    }
+
+    // Default case
+    console.warn(`Component type not implemented: ${component}`);
+    return renderUnknownComponent(blok);
   } catch (error) {
     console.error(`Error rendering component ${component}:`, error);
     return renderErrorComponent(component, error);
   }
-}
-
-/**
- * Render MuchandyHero using our wrapper - Maximum Conciseness
- */
-function renderMuchandyHero(blok) {
-  console.log('🚀 Rendering MuchandyHero from Storyblok:', blok);
-
-  const hero = StoryblokMuchandyHero({
-    // Visual props from Storyblok
-    backgroundImageUrl: blok.background_image?.filename || '',
-    title: blok.title || 'Finden Sie<br>Ihren Preis',
-    subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-    defaultTab: blok.default_tab || 'repair',
-    className: blok.css_class || '',
-
-    // Callbacks - can be enhanced based on Storyblok configuration
-    onRepairPriceChange: (price) => {
-      console.log('💰 Repair price updated:', price);
-      // Emit custom event for tracking
-      window.dispatchEvent(
-        new CustomEvent('muchandy:repair-price', {
-          detail: { price, componentId: blok._uid },
-        })
-      );
-    },
-
-    onRepairSchedule: (repairInfo) => {
-      console.log('📅 Repair scheduled:', repairInfo);
-      // Could open a modal or redirect based on Storyblok config
-      if (blok.repair_schedule_url) {
-        window.location.href = blok.repair_schedule_url;
-      }
-    },
-
-    onBuybackPriceChange: (price) => {
-      console.log('💰 Buyback price updated:', price);
-      // Emit custom event for tracking
-      window.dispatchEvent(
-        new CustomEvent('muchandy:buyback-price', {
-          detail: { price, componentId: blok._uid },
-        })
-      );
-    },
-
-    onBuybackSubmit: (formData) => {
-      console.log('📤 Buyback form submitted:', formData);
-      // Could submit to an endpoint defined in Storyblok
-      if (blok.buyback_submit_url) {
-        // Post to configured endpoint
-        fetch(blok.buyback_submit_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-      }
-    },
-  });
-
-  return hero.getElement();
 }
 
 /**
@@ -157,11 +149,11 @@ function renderErrorComponent(componentType, error) {
 }
 
 /**
- * Renders multiple components
+ * Renders multiple components - SYNCHRONOUS
  * @param {Array} components - Array of component blocks
  * @returns {DocumentFragment} Document fragment containing all rendered elements
  */
-function renderStoryblokComponents(components) {
+export function renderStoryblokComponents(components) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', components?.length || 0);
 
@@ -210,13 +202,11 @@ function renderStoryblokComponents(components) {
   return fragment;
 }
 
-// Export everything properly - FIXED: removed duplicate named export
-export { renderComponent, renderStoryblokComponents };
-
-// Default export
+// Export everything that might be needed
 export default {
   renderComponent,
   renderStoryblokComponents,
+  registerComponent,
 };
 
 console.log('✅ Clean StoryblokComponent ready for custom implementations!');
