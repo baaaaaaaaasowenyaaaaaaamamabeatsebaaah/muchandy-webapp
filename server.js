@@ -1,12 +1,34 @@
 // server.js - Express server with complete read-only database access
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Docker-specific setup
+if (process.env.NODE_ENV === 'production') {
+  console.log('🐳 Running in Docker/Production mode');
+
+  // Ensure data directory exists
+  const dataDir = join(__dirname, 'data');
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true });
+    console.log('📁 Created data directory');
+  }
+
+  // Set production Chromium path for Puppeteer
+  process.env.PUPPETEER_EXECUTABLE_PATH = '/usr/bin/chromium-browser';
+}
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const prisma = new PrismaClient();
 
 console.log('🚀 Starting Express server with complete database access...');
+console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🗄️ Database URL: ${process.env.DATABASE_URL || 'file:./dev.db'}`);
 
 // Middleware
 app.use(express.json());
@@ -51,6 +73,7 @@ app.get('/health', async (req, res) => {
     service: 'muchandy-api',
     port: PORT,
     database: dbStatus,
+    environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   });
 });
@@ -546,7 +569,11 @@ app.get('/api/debug', async (req, res) => {
   res.json({
     server: 'muchandy-api',
     port: PORT,
+    environment: process.env.NODE_ENV || 'development',
     database: dbStatus,
+    puppeteer: {
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || 'default',
+    },
     endpoints: {
       health: 'GET /health',
       manufacturers: [
@@ -589,6 +616,13 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
+// Graceful shutdown for Docker
+process.on('SIGTERM', async () => {
+  console.log('📴 SIGTERM received, shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
 // Start server
 app.listen(PORT, async () => {
   console.log('🎉 Express Server Starting...');
@@ -596,6 +630,7 @@ app.listen(PORT, async () => {
   console.log(`❤️ Health: http://localhost:${PORT}/health`);
   console.log(`📊 Stats: http://localhost:${PORT}/api/stats`);
   console.log(`🔍 Debug: http://localhost:${PORT}/api/debug`);
+  console.log(`🐳 Environment: ${process.env.NODE_ENV || 'development'}`);
 
   // Test database connection
   const dbStatus = await testConnection();
