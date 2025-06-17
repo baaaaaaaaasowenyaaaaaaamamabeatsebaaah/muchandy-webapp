@@ -1,52 +1,20 @@
-/* Specific fixes for MuchandyHero in the webapp */
-.muchandy-hero-enhanced {
-  position: relative !important;
-  z-index: 1 !important;
+/* CRITICAL FIX: Hide ALL custom select overlays in MuchandyHero */
+.muchandy-hero .select-custom,
+.muchandy-hero-enhanced .select-custom {
+  display: none !important;
 }
 
-.muchandy-hero-enhanced * {
+/* Ensure native selects are visible and clickable */
+.muchandy-hero select,
+.muchandy-hero-enhanced select {
+  opacity: 1 !important;
   pointer-events: auto !important;
-}
-
-.muchandy-hero-enhanced .svarog-tabs {
   position: relative !important;
-  z-index: 10 !important;
-}
-
-.muchandy-hero-enhanced .svarog-tabs__tab {
-  pointer-events: auto !important;
+  z-index: 100 !important;
   cursor: pointer !important;
-  user-select: none !important;
-  position: relative !important;
-  z-index: 20 !important;
-}
-
-.muchandy-hero-enhanced select,
-.muchandy-hero-enhanced .svarog-select {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  position: relative !important;
-  z-index: 30 !important;
   -webkit-appearance: menulist !important;
   appearance: menulist !important;
-}
-
-.muchandy-hero-enhanced button,
-.muchandy-hero-enhanced .svarog-button {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  position: relative !important;
-  z-index: 20 !important;
-}
-
-/* Ensure form elements are above everything */
-.muchandy-hero-enhanced .svarog-form-group {
-  position: relative !important;
-  z-index: 15 !important;
-}
-
-/* Fix any overlaying elements */
-.muchandy-hero-enhanced::before,
-.muchandy-hero-enhanced::after {
-  pointer-events: none !important;
+  display: block !important;
+  width: 100% !important;
+  height: 40px !important;
 }

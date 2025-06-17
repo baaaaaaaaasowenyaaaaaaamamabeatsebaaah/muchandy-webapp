@@ -16,6 +16,18 @@ async function initializeApp() {
     document.body.appendChild(appElement);
     console.log('✅ Enhanced app successfully mounted');
 
+    // Add this after the app is mounted to document.body
+    import('./utils/muchandyheroFix.js').then(
+      ({ default: MuchandyHeroFix }) => {
+        console.log('🔧 Loading MuchandyHero fix...');
+
+        // Wait for all components to render
+        setTimeout(() => {
+          MuchandyHeroFix.autoFix();
+        }, 1500);
+      }
+    );
+
     // Log initial state
     const appState = app.getState();
     console.log('Initial app state:', appState);

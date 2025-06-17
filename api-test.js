@@ -1,4 +1,6 @@
 // api-test.js - Updated with port detection for proxy vs direct testing
+import { performance } from 'perf_hooks';
+
 console.log('🧪 Starting Muchandy API Tests (Updated)...');
 
 // Detect which port to use

@@ -1,4 +1,4 @@
-// src/components/StoryblokComponent.js - ABSOLUTE FINAL FIX: Use library's ACTUAL current props
+// src/components/StoryblokComponent.js - COMPLETE FIXED VERSION
 import {
   Button,
   Card,
@@ -14,7 +14,7 @@ import {
 import ApiService from '../services/apiService.js';
 import { router } from '../utils/router.js';
 
-console.log('=== ABSOLUTE FINAL FIX - Use ACTUAL Library Props ===');
+console.log('=== STORYBLOK COMPONENT WITH DATA LOADING FIX ===');
 
 // Single API service instance
 let apiServiceInstance = null;
@@ -32,6 +32,174 @@ const getApiService = () => {
   return apiServiceInstance;
 };
 
+// Helper to initialize Svarog forms with data - KISS principle
+const initializeSvarogForms = async (heroElement, apiService) => {
+  console.log('🔄 Initializing Svarog forms with data...');
+
+  // Find all forms in the hero
+  const forms = heroElement.querySelectorAll('form');
+
+  for (const form of forms) {
+    const manufacturerSelect = form.querySelector(
+      'select[name="manufacturer"]'
+    );
+    if (!manufacturerSelect || manufacturerSelect.options.length > 1) {
+      console.log('Skip form - already initialized or no manufacturer select');
+      continue;
+    }
+
+    try {
+      // Load and populate manufacturers
+      const manufacturers = await apiService.fetchManufacturers();
+      console.log(`📱 Loading ${manufacturers.length} manufacturers into form`);
+
+      // Clear and populate
+      manufacturerSelect.innerHTML =
+        '<option value="" disabled selected>Hersteller auswählen</option>';
+
+      manufacturers.forEach((mfg) => {
+        const option = document.createElement('option');
+        option.value = mfg.id;
+        option.textContent = mfg.name;
+        manufacturerSelect.appendChild(option);
+      });
+
+      // Set up cascade loading for device select
+      manufacturerSelect.addEventListener('change', async (e) => {
+        const manufacturerId = e.target.value;
+        console.log(`🔧 Manufacturer selected: ${manufacturerId}`);
+
+        const deviceSelect = form.querySelector('select[name="device"]');
+        if (!deviceSelect) return;
+
+        // Show loading state
+        deviceSelect.innerHTML =
+          '<option value="" disabled selected>Lade Modelle...</option>';
+        deviceSelect.disabled = true;
+
+        try {
+          const devices = await apiService.fetchDevices(manufacturerId);
+          console.log(`📱 Loaded ${devices.length} devices`);
+
+          // Populate devices
+          deviceSelect.innerHTML =
+            '<option value="" disabled selected>Modell auswählen</option>';
+          devices.forEach((device) => {
+            const option = document.createElement('option');
+            option.value = device.id;
+            option.textContent = device.name;
+            deviceSelect.appendChild(option);
+          });
+
+          deviceSelect.disabled = false;
+
+          // Trigger change to update form state
+          const changeEvent = document.createEvent('Event');
+          changeEvent.initEvent('change', true, true);
+          deviceSelect.dispatchEvent(changeEvent);
+        } catch (error) {
+          console.error('❌ Failed to load devices:', error);
+          deviceSelect.innerHTML =
+            '<option value="" disabled selected>Fehler beim Laden</option>';
+        }
+      });
+
+      // Set up device select change handler
+      const deviceSelect = form.querySelector('select[name="device"]');
+      if (deviceSelect) {
+        deviceSelect.addEventListener('change', async (e) => {
+          const deviceId = e.target.value;
+          console.log(`📱 Device selected: ${deviceId}`);
+
+          // Handle action select for repair form
+          const actionSelect = form.querySelector('select[name="action"]');
+          if (actionSelect) {
+            actionSelect.innerHTML =
+              '<option value="" disabled selected>Lade Services...</option>';
+            actionSelect.disabled = true;
+
+            try {
+              const actions = await apiService.fetchActions(deviceId);
+              console.log(`🔧 Loaded ${actions.length} actions`);
+
+              actionSelect.innerHTML =
+                '<option value="" disabled selected>Service auswählen</option>';
+              actions.forEach((action) => {
+                const option = document.createElement('option');
+                option.value = action.id;
+                option.textContent = action.name;
+                actionSelect.appendChild(option);
+              });
+
+              actionSelect.disabled = false;
+            } catch (error) {
+              console.error('❌ Failed to load actions:', error);
+              actionSelect.innerHTML =
+                '<option value="" disabled selected>Fehler beim Laden</option>';
+            }
+          }
+
+          // Handle condition selector for buyback form
+          const conditionContainer = form.querySelector('.condition-selector');
+          if (conditionContainer && apiService.fetchConditions) {
+            try {
+              const conditions = await apiService.fetchConditions(deviceId);
+              console.log(`📋 Loaded ${conditions.length} conditions`);
+
+              // Clear existing conditions
+              conditionContainer.innerHTML = '';
+
+              // Create condition buttons
+              const conditionGroup = createElement('div', {
+                className: 'condition-group',
+                style:
+                  'display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;',
+              });
+
+              conditions.forEach((condition) => {
+                const button = createElement('button', {
+                  type: 'button',
+                  className: 'condition-button',
+                  textContent: condition.name,
+                  style:
+                    'padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;',
+                  onclick: () => {
+                    // Handle condition selection
+                    conditionGroup.querySelectorAll('button').forEach((btn) => {
+                      btn.style.background = 'white';
+                      btn.style.color = 'black';
+                    });
+                    button.style.background = '#ff7f50';
+                    button.style.color = 'white';
+
+                    // Trigger price calculation
+                    const conditionEvent = document.createEvent('Event');
+                    conditionEvent.initEvent('conditionSelected', true, true);
+                    conditionEvent.detail = {
+                      conditionId: condition.id,
+                      deviceId,
+                    };
+                    form.dispatchEvent(conditionEvent);
+                  },
+                });
+                conditionGroup.appendChild(button);
+              });
+
+              conditionContainer.appendChild(conditionGroup);
+            } catch (error) {
+              console.error('❌ Failed to load conditions:', error);
+            }
+          }
+        });
+      }
+
+      console.log('✅ Form initialized with cascade loading');
+    } catch (error) {
+      console.error('❌ Form initialization failed:', error);
+    }
+  }
+};
+
 // Component map
 const componentMap = {
   hero: renderHero,
@@ -45,7 +213,7 @@ const componentMap = {
   form: renderForm,
 };
 
-// ABSOLUTE FINAL FIX: Use the EXACT props the current library expects
+// FIXED: MuchandyHero with automatic data loading
 function renderMuchandyHero(blok) {
   console.log('🚀 Rendering MuchandyHero with API service:', blok);
 
@@ -89,48 +257,42 @@ function renderMuchandyHero(blok) {
       backgroundImageUrl: blok.background_image?.filename || '',
       title: blok.title || 'Finden Sie<br>Ihren Preis',
       subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-      defaultValue: blok.default_tab || 'repair', // Correct prop name
+      defaultValue: blok.default_tab || 'repair',
       repairForm,
       buybackForm,
       className: 'muchandy-hero-enhanced',
     });
 
-    // Force clickability after a small delay to ensure DOM is ready
+    console.log('✅ MuchandyHero created successfully');
+
+    // FIX 1: Hide custom select overlays and ensure native selects are visible
     setTimeout(() => {
       const heroElement = muchandyHero.getElement();
       if (heroElement) {
-        // Fix any z-index/pointer-events issues
-        const tabs = heroElement.querySelectorAll(
-          '.svarog-tabs__tab, [class*="tab"]'
-        );
-        tabs.forEach((tab) => {
-          tab.style.pointerEvents = 'auto';
-          tab.style.cursor = 'pointer';
-          tab.style.position = 'relative';
-          tab.style.zIndex = '10';
+        // Hide all custom select overlays
+        heroElement.querySelectorAll('.select-custom').forEach((el) => {
+          el.style.display = 'none';
         });
 
-        // Fix selects
-        const selects = heroElement.querySelectorAll('select, .svarog-select');
-        selects.forEach((select) => {
-          select.style.pointerEvents = 'auto';
-          select.style.cursor = 'pointer';
-          select.style.position = 'relative';
-          select.style.zIndex = '10';
+        // Ensure native selects are visible
+        heroElement.querySelectorAll('select').forEach((el) => {
+          el.style.opacity = '1';
+          el.style.display = 'block';
         });
 
-        // Fix buttons
-        const buttons = heroElement.querySelectorAll('button, .svarog-button');
-        buttons.forEach((button) => {
-          button.style.pointerEvents = 'auto';
-          button.style.cursor = 'pointer';
-          button.style.position = 'relative';
-          button.style.zIndex = '10';
-        });
+        console.log('✅ Fixed select overlays');
+
+        // FIX 2: Initialize forms with data
+        initializeSvarogForms(heroElement, apiService)
+          .then(() => {
+            console.log('✅ Forms initialized with data');
+          })
+          .catch((error) => {
+            console.error('❌ Form initialization error:', error);
+          });
       }
-    }, 100);
+    }, 200);
 
-    console.log('✅ MuchandyHero created successfully');
     return muchandyHero;
   } catch (error) {
     console.error('❌ Error creating MuchandyHero:', error);
@@ -557,26 +719,98 @@ export function renderStoryblokComponents(bloks) {
   return container;
 }
 
+// Enhanced debugging for MuchandyHero
+window.debugMuchandyHero = () => {
+  console.log('🔍 Debugging MuchandyHero...');
+
+  // Find all tabs
+  const tabs = document.querySelectorAll('.tabs__button');
+  console.log(`Found ${tabs.length} tabs`);
+
+  // Add click listeners to tabs
+  tabs.forEach((tab, i) => {
+    // Remove any existing listeners
+    const newTab = tab.cloneNode(true);
+    tab.parentNode.replaceChild(newTab, tab);
+
+    // Add new listener
+    newTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log(`✅ Tab ${i} clicked!`);
+
+      // Manually switch tabs
+      document.querySelectorAll('.tabs__button').forEach((t) => {
+        t.classList.remove('tabs__button--active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      newTab.classList.add('tabs__button--active');
+      newTab.setAttribute('aria-selected', 'true');
+
+      // Switch panels
+      const panelId = newTab.getAttribute('aria-controls');
+      document.querySelectorAll('.tabs__panel').forEach((p) => {
+        p.classList.remove('tabs__panel--active');
+        p.hidden = true;
+      });
+      const panel = document.getElementById(panelId);
+      if (panel) {
+        panel.classList.add('tabs__panel--active');
+        panel.hidden = false;
+      }
+    });
+  });
+
+  console.log('✅ Debug listeners added to tabs');
+
+  // Check for blocking elements
+  const firstTab = tabs[0];
+  if (firstTab) {
+    const rect = firstTab.getBoundingClientRect();
+    const topElement = document.elementFromPoint(
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2
+    );
+    if (topElement === firstTab) {
+      console.log('✅ First tab is clickable');
+    } else {
+      console.log('❌ First tab is blocked by:', topElement);
+    }
+  }
+
+  // Test API data
+  const testAPI = async () => {
+    console.log('🧪 Testing API...');
+    const apiService = getApiService();
+    const manufacturers = await apiService.fetchManufacturers();
+    console.log('✅ API returned manufacturers:', manufacturers);
+  };
+
+  testAPI();
+};
+
 // Development helpers with enhanced debugging
 if (import.meta.env.DEV) {
   window.testMuchandyHero = () => {
-    console.log('🧪 Testing ABSOLUTE FINAL FIX MuchandyHero...');
+    console.log('🧪 Testing MuchandyHero with data loading...');
     try {
       const testBlok = {
         component: 'muchandy_hero',
         title: 'Test Hero',
-        subtitle: 'Testing with ACTUAL library props',
+        subtitle: 'Testing with data loading',
         default_tab: 'repair',
       };
       const hero = renderMuchandyHero(testBlok);
       console.log('✅ Test hero created:', hero);
 
-      // Check for tabs immediately
-      const element = hero.getElement();
-      const tabs = element.querySelectorAll(
-        '.svarog-tabs__tab, [class*="tab"]'
-      );
-      console.log(`🔍 Test: Found ${tabs.length} tab elements immediately`);
+      // Check for data after a delay
+      setTimeout(() => {
+        const element = hero.getElement();
+        const selects = element.querySelectorAll('select');
+        selects.forEach((select, i) => {
+          console.log(`Select ${i}: ${select.options.length} options`);
+        });
+      }, 1000);
 
       return hero;
     } catch (error) {
@@ -599,52 +833,10 @@ if (import.meta.env.DEV) {
       });
   };
 
-  // Enhanced debugging
-  window.debugTabsSpecifically = () => {
-    console.log('🔍 DEBUGGING TABS SPECIFICALLY');
-    console.log('================================');
-
-    // Look for all possible tab-related elements
-    const allTabSelectors = [
-      '.svarog-tabs__tab',
-      '.svarog-tab',
-      '[class*="tab"]',
-      '[role="tab"]',
-      '.tab',
-      '.tabs',
-    ];
-
-    allTabSelectors.forEach((selector) => {
-      const elements = document.querySelectorAll(selector);
-      console.log(`${selector}: ${elements.length} elements`);
-      elements.forEach((el, i) => {
-        console.log(`  ${i}: ${el.className} - "${el.textContent?.trim()}"`);
-      });
-    });
-
-    // Look inside MuchandyHero specifically
-    const hero = document.querySelector('.muchandy-hero');
-    if (hero) {
-      console.log('🎯 Inside MuchandyHero:');
-      allTabSelectors.forEach((selector) => {
-        const elements = hero.querySelectorAll(selector);
-        console.log(`  ${selector}: ${elements.length} elements`);
-      });
-
-      // Check all children
-      console.log('All children in MuchandyHero:');
-      Array.from(hero.children).forEach((child, i) => {
-        console.log(`  Child ${i}: ${child.tagName}.${child.className}`);
-      });
-    }
-  };
-
-  console.log('🔧 ABSOLUTE FINAL FIX Development helpers:');
+  console.log('🔧 Development helpers:');
   console.log('  - window.testMuchandyHero()');
   console.log('  - window.testApiService()');
-  console.log('  - window.debugTabsSpecifically()');
+  console.log('  - window.debugMuchandyHero()');
 }
 
-console.log(
-  '✅ ABSOLUTE FINAL FIX StoryblokComponent ready - SHOULD WORK NOW!'
-);
+console.log('✅ StoryblokComponent ready with data loading fixes!');
