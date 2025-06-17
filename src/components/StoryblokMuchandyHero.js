@@ -7,6 +7,7 @@ import {
 } from 'svarog-ui-core';
 
 import { createElement } from '../utils/componentFactory.js';
+import { appState } from '../utils/stateStore.js'; // ADD THIS IMPORT
 
 /**
  * @file StoryblokMuchandyHero - Wrapper for MuchandyHero with service integration
@@ -163,8 +164,8 @@ export function StoryblokMuchandyHero(props = {}) {
     try {
       // Wait for API service
       console.log('⏳ Waiting for API service...');
-      const appState = window.appState;
 
+      // Use imported appState instead of window.appState
       if (appState?.get('services.api.ready')) {
         console.log('✅ API service already ready');
         apiService = appState.get('services.api.instance');
@@ -248,10 +249,10 @@ export function StoryblokMuchandyHero(props = {}) {
     console.log('📦 Showing hero component...');
     const heroElement = hero.getElement();
 
-    // Store state for debugging
-    if (window.appState) {
-      window.appState.set('components.muchandy-hero.status', 'ready');
-      window.appState.set('components.muchandy-hero.element', heroElement);
+    // Store state for debugging (use imported appState)
+    if (appState) {
+      appState.set('components.muchandy-hero.status', 'ready');
+      appState.set('components.muchandy-hero.element', heroElement);
     }
 
     container.innerHTML = '';
