@@ -15,10 +15,11 @@ console.log('=== ENHANCED API SERVICE LOADING ===');
  */
 class ApiService {
   constructor() {
-    // Use environment variable or current origin
-    this.baseUrl = import.meta.env?.VITE_API_URL || window.location.origin;
+    this.baseUrl = import.meta.env.PROD
+      ? ''
+      : import.meta.env.VITE_API_URL || window.location.origin;
     console.log(
-      `🔧 Enhanced ApiService initialized with baseUrl: ${this.baseUrl}`
+      `🔧 Enhanced ApiService initialized with baseUrl: ${this.baseUrl || 'same-origin'}`
     );
 
     this.retry = new RetryManager({
@@ -447,60 +448,6 @@ class ApiService {
     };
 
     return devicesByManufacturer[manufacturerId] || [];
-  }
-
-  /**
-   * Fetch actions by device - NEW METHOD - maps to GET /api/device/{deviceId}/actions
-   */
-  async fetchActionsByDevice(deviceId) {
-    const cacheKey = `actions_device_${deviceId}`;
-    console.log(`🔧 Fetching actions for device ${deviceId}...`);
-
-    // Check state
-    const stateKey = `api.actions.device.${deviceId}`;
-    const stateData = appState.get(stateKey);
-    if (stateData?.length > 0) {
-      console.log(`✅ Actions from state: ${stateData.length}`);
-      return stateData;
-    }
-
-    // Check cache
-    const cached = this.getFromCache(cacheKey);
-    if (cached) {
-      appState.set(stateKey, cached);
-      return cached;
-    }
-
-    try {
-      const data = await this.get(`/api/device/${deviceId}/actions`);
-      const transformed = data.map((action) => ({
-        id: String(action.id),
-        name: action.name,
-        deviceId: String(action.deviceId),
-        latestPrice: action.latestPrice,
-        priceDate: action.priceDate,
-      }));
-
-      // Save to cache and state
-      this.saveToCache(cacheKey, transformed);
-      appState.set(stateKey, transformed);
-
-      return transformed;
-    } catch (error) {
-      console.error('❌ Failed to fetch device actions:', error);
-
-      // Try expired cache
-      const expiredCache = safeStorage.get(`${this.cachePrefix}${cacheKey}`);
-      if (expiredCache) {
-        const { data } = expiredCache;
-        console.log('📦 Using expired cache for actions');
-        appState.set(stateKey, data);
-        return data;
-      }
-
-      // Fallback
-      return this.getFallbackActions();
-    }
   }
 
   /**
