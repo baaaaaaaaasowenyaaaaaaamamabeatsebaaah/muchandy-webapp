@@ -1,10 +1,15 @@
-// src/components/StoryblokMuchandyHero.js
+// src/components/StoryblokMuchandyHero.js - Fixed version
 /**
  * @file Custom MuchandyHero wrapper for Storyblok integration
  * @description Handles async service loading and form creation
  */
 
-import { createElement, MuchandyHero } from 'svarog-ui-core';
+import { createElement } from '../utils/componentFactory.js';
+import {
+  MuchandyHero,
+  PhoneRepairFormContainer,
+  UsedPhonePriceFormContainer,
+} from 'svarog-ui-core';
 import { appState } from '../utils/stateStore.js';
 import { apiService } from '../services/apiService.js';
 
@@ -144,7 +149,8 @@ export function StoryblokMuchandyHero(props = {}) {
       container = createElement('div', {
         className: 'storyblok-muchandy-hero-wrapper',
       });
-      initialize();
+      // Start initialization immediately after creating container
+      setTimeout(() => initialize(), 0);
     }
     return container;
   };
@@ -202,10 +208,6 @@ export function StoryblokMuchandyHero(props = {}) {
     const repairService = createRepairServiceAdapter(api);
     const buybackService = createBuybackServiceAdapter(api);
 
-    // Import form components
-    const [{ PhoneRepairFormContainer }, { UsedPhonePriceFormContainer }] =
-      await Promise.all([import('svarog-ui-core'), import('svarog-ui-core')]);
-
     // Create repair form
     repairForm = PhoneRepairFormContainer({
       service: repairService,
@@ -242,7 +244,7 @@ export function StoryblokMuchandyHero(props = {}) {
 
   // Show loading state
   const showLoading = () => {
-    if (isDestroyed) return;
+    if (isDestroyed || !container) return;
 
     currentState = 'loading';
     container.innerHTML = '';
@@ -251,20 +253,30 @@ export function StoryblokMuchandyHero(props = {}) {
 
   // Show error state
   const showError = (error) => {
-    if (isDestroyed) return;
+    if (isDestroyed || !container) return;
 
     currentState = 'error';
     container.innerHTML = '';
     container.appendChild(errorComponent(error, retry));
   };
 
-  // Show hero
+  // Show hero - FIXED to ensure it updates the DOM
   const showHero = () => {
-    if (isDestroyed || !hero) return;
+    if (isDestroyed || !hero || !container) return;
+
+    console.log('📦 Showing hero component...');
 
     currentState = 'ready';
     container.innerHTML = '';
-    container.appendChild(hero.getElement());
+
+    const heroElement = hero.getElement();
+    container.appendChild(heroElement);
+
+    console.log('✅ Hero component added to DOM');
+
+    // Update app state
+    appState.set('components.muchandy-hero.status', 'ready');
+    appState.set('components.muchandy-hero.element', heroElement);
   };
 
   // Retry initialization

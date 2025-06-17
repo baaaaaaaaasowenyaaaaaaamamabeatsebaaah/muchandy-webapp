@@ -1,17 +1,16 @@
-// src/components/StoryblokComponent.js - CORRECTED VERSION
+// src/components/StoryblokComponent.js - Fixed duplicate export
 
 import { createElement } from '../utils/componentFactory.js';
 import { StoryblokMuchandyHero } from './StoryblokMuchandyHero.js';
 
-console.log('=== STORYBLOK COMPONENT RENDERER ===');
+console.log('=== CLEAN STORYBLOK COMPONENT RENDERER ===');
 
 /**
  * Renders a single Storyblok component
+ * @param {Object} blok - Storyblok block data
+ * @returns {HTMLElement} Rendered component element
  */
-export function renderComponent(blok) {
-  console.log('=== RENDERING COMPONENT ===');
-  console.log('Component type:', blok.component);
-
+function renderComponent(blok) {
   if (!blok || !blok.component) {
     console.error('Invalid blok:', blok);
     return createElement('div', {
@@ -20,45 +19,83 @@ export function renderComponent(blok) {
     });
   }
 
+  const { component } = blok;
+
   try {
-    switch (blok.component) {
+    switch (component) {
       case 'muchandy_hero':
-        // Simply use our wrapper! - Maximum Conciseness
-        console.log('🚀 Creating StoryblokMuchandyHero with data:', blok);
-
-        const hero = StoryblokMuchandyHero({
-          // Map Storyblok fields to component props
-          backgroundImageUrl: blok.background_image?.filename || '',
-          title: blok.title || 'Finden Sie<br>Ihren Preis',
-          subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-          defaultTab: blok.default_tab || 'repair',
-
-          // Callbacks (if defined in Storyblok)
-          onRepairPriceChange: (price) => {
-            console.log('💰 Repair price:', price);
-          },
-          onRepairSchedule: (info) => {
-            console.log('📅 Repair scheduled:', info);
-          },
-          onBuybackPriceChange: (price) => {
-            console.log('💰 Buyback price:', price);
-          },
-          onBuybackSubmit: (data) => {
-            console.log('📤 Buyback submitted:', data);
-          },
-        });
-
-        return hero.getElement();
+        return renderMuchandyHero(blok);
 
       default:
-        console.warn(`Component type not implemented: ${blok.component}`);
+        console.warn(`Component type not implemented: ${component}`);
         return renderUnknownComponent(blok);
     }
   } catch (error) {
-    console.error(`Error rendering component ${blok.component}:`, error);
-    return renderErrorComponent(blok.component, error);
+    console.error(`Error rendering component ${component}:`, error);
+    return renderErrorComponent(component, error);
   }
 }
+
+/**
+ * Render MuchandyHero using our wrapper - Maximum Conciseness
+ */
+function renderMuchandyHero(blok) {
+  console.log('🚀 Rendering MuchandyHero from Storyblok:', blok);
+
+  const hero = StoryblokMuchandyHero({
+    // Visual props from Storyblok
+    backgroundImageUrl: blok.background_image?.filename || '',
+    title: blok.title || 'Finden Sie<br>Ihren Preis',
+    subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
+    defaultTab: blok.default_tab || 'repair',
+    className: blok.css_class || '',
+
+    // Callbacks - can be enhanced based on Storyblok configuration
+    onRepairPriceChange: (price) => {
+      console.log('💰 Repair price updated:', price);
+      // Emit custom event for tracking
+      window.dispatchEvent(
+        new CustomEvent('muchandy:repair-price', {
+          detail: { price, componentId: blok._uid },
+        })
+      );
+    },
+
+    onRepairSchedule: (repairInfo) => {
+      console.log('📅 Repair scheduled:', repairInfo);
+      // Could open a modal or redirect based on Storyblok config
+      if (blok.repair_schedule_url) {
+        window.location.href = blok.repair_schedule_url;
+      }
+    },
+
+    onBuybackPriceChange: (price) => {
+      console.log('💰 Buyback price updated:', price);
+      // Emit custom event for tracking
+      window.dispatchEvent(
+        new CustomEvent('muchandy:buyback-price', {
+          detail: { price, componentId: blok._uid },
+        })
+      );
+    },
+
+    onBuybackSubmit: (formData) => {
+      console.log('📤 Buyback form submitted:', formData);
+      // Could submit to an endpoint defined in Storyblok
+      if (blok.buyback_submit_url) {
+        // Post to configured endpoint
+        fetch(blok.buyback_submit_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+      }
+    },
+  });
+
+  return hero.getElement();
+}
+
 /**
  * Renders an unknown component placeholder
  */
@@ -121,8 +158,10 @@ function renderErrorComponent(componentType, error) {
 
 /**
  * Renders multiple components
+ * @param {Array} components - Array of component blocks
+ * @returns {DocumentFragment} Document fragment containing all rendered elements
  */
-export function renderStoryblokComponents(components) {
+function renderStoryblokComponents(components) {
   console.log('=== RENDERING COMPONENTS ===');
   console.log('Components to render:', components?.length || 0);
 
@@ -132,10 +171,12 @@ export function renderStoryblokComponents(components) {
   }
 
   const fragment = document.createDocumentFragment();
+  const errors = [];
 
   for (let i = 0; i < components.length; i++) {
     const component = components[i];
-    console.log(`Rendering component ${i + 1}:`, component.component);
+    console.log(`=== RENDERING COMPONENT ${i + 1} ===`);
+    console.log('Component type:', component.component);
 
     try {
       const element = renderComponent(component);
@@ -147,55 +188,35 @@ export function renderStoryblokComponents(components) {
       }
     } catch (error) {
       console.error('❌ Component rendering failed:', error);
+      errors.push({ component, error });
+
+      // Add error placeholder
       const errorElement = renderErrorComponent(component.component, error);
       fragment.appendChild(errorElement);
     }
   }
 
-  console.log('✅ Component rendering complete');
+  if (errors.length > 0) {
+    console.error('=== COMPONENT RENDERING ERRORS ===');
+    errors.forEach(({ component, error }) => {
+      console.error(`Component ${component.component}:`, error);
+    });
+  }
+
+  console.log(
+    `✅ Component rendering complete: ${components.length - errors.length} success, ${errors.length} errors`
+  );
+
   return fragment;
 }
 
-// Development helpers
-if (import.meta.env.DEV) {
-  window.testMuchandyHeroServices = () => {
-    console.log('🧪 Testing MuchandyHero service interfaces...');
+// Export everything properly - FIXED: removed duplicate named export
+export { renderComponent, renderStoryblokComponents };
 
-    const api = appState.get('services.api.instance') || apiService;
-    console.log('API Service:', api);
-
-    const repairAdapter = {
-      fetchManufacturers: () => api.fetchManufacturers(),
-      fetchDevices: (id) => api.fetchDevices(id),
-      fetchActions: (id) => api.fetchActionsByDevice(id),
-      fetchPrice: (id) => api.fetchPriceByAction(id),
-    };
-
-    console.log('Repair adapter:', repairAdapter);
-    return repairAdapter;
-  };
-
-  window.debugMuchandyHero = () => {
-    const heroStatus = appState.get('components.muchandy-hero');
-    console.log('MuchandyHero state:', heroStatus);
-
-    const apiStatus = appState.get('services.api');
-    console.log('API service state:', apiStatus);
-
-    const manufacturers = appState.get('api.manufacturers');
-    console.log('Loaded manufacturers:', manufacturers?.length);
-  };
-
-  console.log('🔧 StoryblokComponent service testing:');
-  console.log(
-    '  - window.testMuchandyHeroServices() - Test service interfaces'
-  );
-  console.log('  - window.debugMuchandyHero() - Debug hero state');
-}
-
+// Default export
 export default {
   renderComponent,
   renderStoryblokComponents,
 };
 
-console.log('✅ StoryblokComponent with correct API mapping ready!');
+console.log('✅ Clean StoryblokComponent ready for custom implementations!');
