@@ -1,51 +1,97 @@
-// src/components/StoryblokMuchandyHero.js - Fixed version
-/**
- * @file Custom MuchandyHero wrapper for Storyblok integration
- * @description Handles async service loading and form creation
- */
+// src/components/StoryblokMuchandyHero.js
 
-import { createElement } from '../utils/componentFactory.js';
 import {
   MuchandyHero,
   PhoneRepairFormContainer,
   UsedPhonePriceFormContainer,
 } from 'svarog-ui-core';
-import { appState } from '../utils/stateStore.js';
-import { apiService } from '../services/apiService.js';
+
+import { createElement } from '../utils/componentFactory.js';
+
+/**
+ * @file StoryblokMuchandyHero - Wrapper for MuchandyHero with service integration
+ * @description Handles async initialization of forms and services for MuchandyHero
+ */
 
 console.log('=== STORYBLOK MUCHANDY HERO WRAPPER ===');
 
 /**
- * Service adapters to match form expectations - KISS principle
+ * Creates a MuchandyHero component with integrated services
+ * @param {Object} props - Component props from Storyblok
+ * @returns {Object} Component API
  */
-const createRepairServiceAdapter = (api) => ({
-  fetchManufacturers: () => api.fetchManufacturers(),
-  fetchDevices: (manufacturerId) => api.fetchDevices(manufacturerId),
-  fetchActions: (deviceId) => api.fetchActionsByDevice(deviceId),
-  fetchPrice: (actionId) => api.fetchPriceByAction(actionId),
-});
+export function StoryblokMuchandyHero(props = {}) {
+  const {
+    // Hero props from Storyblok
+    background_image, // Storyblok uses this
+    title = 'Finden Sie<br>Ihren Preis',
+    subtitle = 'Jetzt Preis berechnen.',
+    default_tab = 'repair',
+    className = '',
 
-const createBuybackServiceAdapter = (api) => ({
-  fetchManufacturers: () => api.fetchManufacturers(),
-  fetchDevices: (manufacturerId) => api.fetchDevices(manufacturerId),
-  fetchConditions: (deviceId) => api.fetchConditions(deviceId),
-  fetchPrice: (conditionId) => api.fetchPrice(null, conditionId),
-});
+    // Callbacks (if passed from Storyblok)
+    onRepairPriceChange = () => {},
+    onRepairSchedule = () => {},
+    onBuybackPriceChange = () => {},
+    onBuybackSubmit = () => {},
 
-/**
- * Create loading state component - Economy of Expression
- */
-const createLoadingState = () => {
-  return createElement('div', {
-    className: 'muchandy-hero-loading',
-    style: {
-      minHeight: '500px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
-    },
-    innerHTML: `
+    // Custom components
+    loadingComponent = createLoadingState,
+    errorComponent = createErrorState,
+  } = props;
+
+  // Handle Storyblok image format
+  let backgroundImageUrl = '';
+  if (background_image) {
+    // Storyblok images can be objects with filename property or direct strings
+    backgroundImageUrl =
+      typeof background_image === 'string'
+        ? background_image
+        : background_image.filename || '';
+  }
+
+  console.log('🖼️ StoryblokMuchandyHero background mapping:', {
+    received: background_image,
+    mapped: backgroundImageUrl,
+  });
+
+  // Component state
+  let container = null;
+  let hero = null;
+  let repairForm = null;
+  let buybackForm = null;
+  let apiService = null;
+  let isInitialized = false;
+  let isDestroyed = false;
+
+  // Create container element
+  const createContainer = () => {
+    if (!container) {
+      container = createElement('div', {
+        className: 'storyblok-muchandy-hero-wrapper',
+        style: {
+          width: '100%',
+          minHeight: '400px',
+        },
+      });
+    }
+    return container;
+  };
+
+  // Default loading state
+  function createLoadingState() {
+    const loadingEl = createElement('div', {
+      className: 'muchandy-hero-loading',
+      style: {
+        minHeight: '500px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
+      },
+    });
+
+    loadingEl.innerHTML = `
       <div style="text-align: center;">
         <div style="
           width: 60px;
@@ -64,176 +110,129 @@ const createLoadingState = () => {
           to { transform: rotate(360deg); }
         }
       </style>
-    `,
-  });
-};
+    `;
 
-/**
- * Create error state component - KISS principle
- */
-const createErrorState = (error, onRetry) => {
-  const errorEl = createElement('div', {
-    className: 'muchandy-hero-error',
-    style: {
-      minHeight: '500px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#fee',
-      padding: '40px',
-    },
-  });
+    return loadingEl;
+  }
 
-  errorEl.innerHTML = `
-    <div style="text-align: center; max-width: 500px;">
-      <h2 style="color: #c00; margin: 0 0 20px 0;">
-        ⚠️ Fehler beim Laden
-      </h2>
-      <p style="color: #666; margin: 0 0 20px 0;">
-        ${error.message || 'Der Preisrechner konnte nicht geladen werden.'}
-      </p>
-      <button onclick="this.onclick=null" style="
-        padding: 12px 24px;
-        background: #dc3545;
+  // Default error state
+  function createErrorState(error) {
+    const errorEl = createElement('div', {
+      className: 'muchandy-hero-error',
+      style: {
+        padding: '2rem',
+        background: '#fee',
+        border: '1px solid #fcc',
+        borderRadius: '4px',
+        margin: '1rem 0',
+      },
+    });
+
+    errorEl.innerHTML = `
+      <h3 style="color: #c00;">Fehler beim Laden</h3>
+      <p>${error.message || 'Ein unerwarteter Fehler ist aufgetreten'}</p>
+      <button onclick="window.location.reload()" style="
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background: #c00;
         color: white;
         border: none;
         border-radius: 4px;
-        font-size: 16px;
         cursor: pointer;
-      ">
-        Erneut versuchen
-      </button>
-    </div>
-  `;
+      ">Seite neu laden</button>
+    `;
 
-  // Attach retry handler
-  const button = errorEl.querySelector('button');
-  button.addEventListener('click', onRetry);
+    return errorEl;
+  }
 
-  return errorEl;
-};
-
-/**
- * StoryblokMuchandyHero Component - Algorithmic Elegance
- */
-export function StoryblokMuchandyHero(props = {}) {
-  const {
-    // Hero props
-    backgroundImageUrl = '',
-    title = 'Finden Sie<br>Ihren Preis',
-    subtitle = 'Jetzt Preis berechnen.',
-    defaultTab = 'repair',
-    className = '',
-
-    // Callbacks
-    onRepairPriceChange = () => {},
-    onRepairSchedule = () => {},
-    onBuybackPriceChange = () => {},
-    onBuybackSubmit = () => {},
-
-    // Custom components
-    loadingComponent = createLoadingState,
-    errorComponent = createErrorState,
-  } = props;
-
-  let container = null;
-  let hero = null;
-  let repairForm = null;
-  let buybackForm = null;
-  let isDestroyed = false;
-  let currentState = 'loading';
-
-  // Create container
-  const getContainer = () => {
-    if (!container) {
-      container = createElement('div', {
-        className: 'storyblok-muchandy-hero-wrapper',
-      });
-      // Start initialization immediately after creating container
-      setTimeout(() => initialize(), 0);
-    }
-    return container;
-  };
-
-  // Initialize component - Maximum Conciseness
+  // Initialize component
   const initialize = async () => {
     console.log('🚀 Initializing StoryblokMuchandyHero...');
 
-    // Show loading state
-    showLoading();
-
-    try {
-      // Wait for API service
-      await waitForApiService();
-
-      // Create forms
-      await createForms();
-
-      // Create hero
-      createHero();
-
-      // Show hero
-      showHero();
-
-      console.log('✅ StoryblokMuchandyHero initialized successfully');
-    } catch (error) {
-      console.error('❌ StoryblokMuchandyHero initialization failed:', error);
-      showError(error);
-    }
-  };
-
-  // Wait for API service - Economy of Expression
-  const waitForApiService = async () => {
-    console.log('⏳ Waiting for API service...');
-
-    // Check if already ready
-    if (appState.get('services.api.ready')) {
-      console.log('✅ API service already ready');
+    if (isDestroyed) {
+      console.warn('Component was destroyed, aborting initialization');
       return;
     }
 
-    // Wait for it
-    await appState.waitFor('services.api.ready', 10000);
-    console.log('✅ API service ready');
-  };
+    // Show loading state
+    const containerEl = createContainer();
+    const loadingEl = loadingComponent();
+    containerEl.innerHTML = '';
+    containerEl.appendChild(loadingEl);
 
-  // Create forms with services - KISS principle
-  const createForms = async () => {
-    console.log('🔧 Creating forms...');
+    try {
+      // Wait for API service
+      console.log('⏳ Waiting for API service...');
+      const appState = window.appState;
 
-    // Get API service instance
-    const api = appState.get('services.api.instance') || apiService;
+      if (appState?.get('services.api.ready')) {
+        console.log('✅ API service already ready');
+        apiService = appState.get('services.api.instance');
+      } else if (appState) {
+        // Wait for service to be ready
+        apiService = await appState.waitFor('services.api.instance', 10000);
+        console.log('✅ API service loaded');
+      } else {
+        throw new Error('AppState not available');
+      }
 
-    // Create service adapters
-    const repairService = createRepairServiceAdapter(api);
-    const buybackService = createBuybackServiceAdapter(api);
+      // Create forms
+      console.log('🔧 Creating forms...');
 
-    // Create repair form
-    repairForm = PhoneRepairFormContainer({
-      service: repairService,
-      onPriceChange: onRepairPriceChange,
-      onScheduleClick: onRepairSchedule,
-    });
+      repairForm = PhoneRepairFormContainer({
+        service: apiService,
+        onPriceChange: (price) => {
+          console.log('💰 Repair price changed:', price);
+          onRepairPriceChange(price);
+        },
+        onScheduleClick: (repairInfo) => {
+          console.log('📅 Repair scheduled:', repairInfo);
+          onRepairSchedule(repairInfo);
+        },
+      });
 
-    // Create buyback form
-    buybackForm = UsedPhonePriceFormContainer({
-      service: buybackService,
-      onPriceChange: onBuybackPriceChange,
-      onSubmit: onBuybackSubmit,
-    });
+      buybackForm = UsedPhonePriceFormContainer({
+        service: apiService,
+        onPriceChange: (price) => {
+          console.log('💰 Buyback price changed:', price);
+          onBuybackPriceChange(price);
+        },
+        onSubmit: (formData) => {
+          console.log('📤 Buyback submitted:', formData);
+          onBuybackSubmit(formData);
+        },
+      });
 
-    console.log('✅ Forms created successfully');
+      console.log('✅ Forms created successfully');
+
+      // Create hero component
+      createHero();
+
+      // Update container
+      updateContainer();
+
+      isInitialized = true;
+      console.log('✅ StoryblokMuchandyHero initialized successfully');
+    } catch (error) {
+      console.error('❌ StoryblokMuchandyHero initialization failed:', error);
+      const errorEl = errorComponent(error);
+      containerEl.innerHTML = '';
+      containerEl.appendChild(errorEl);
+    }
   };
 
   // Create hero component
   const createHero = () => {
-    console.log('🎨 Creating MuchandyHero...');
+    console.log(
+      '🎨 Creating MuchandyHero with background:',
+      backgroundImageUrl
+    );
 
     hero = MuchandyHero({
-      backgroundImageUrl,
+      backgroundImageUrl, // Now using the correctly mapped URL
       title,
       subtitle,
-      defaultTab,
+      defaultTab: default_tab,
       className,
       repairForm,
       buybackForm,
@@ -242,99 +241,118 @@ export function StoryblokMuchandyHero(props = {}) {
     console.log('✅ MuchandyHero created');
   };
 
-  // Show loading state
-  const showLoading = () => {
-    if (isDestroyed || !container) return;
-
-    currentState = 'loading';
-    container.innerHTML = '';
-    container.appendChild(loadingComponent());
-  };
-
-  // Show error state
-  const showError = (error) => {
-    if (isDestroyed || !container) return;
-
-    currentState = 'error';
-    container.innerHTML = '';
-    container.appendChild(errorComponent(error, retry));
-  };
-
-  // Show hero - FIXED to ensure it updates the DOM
-  const showHero = () => {
-    if (isDestroyed || !hero || !container) return;
+  // Update container content
+  const updateContainer = () => {
+    if (!container || !hero || isDestroyed) return;
 
     console.log('📦 Showing hero component...');
-
-    currentState = 'ready';
-    container.innerHTML = '';
-
     const heroElement = hero.getElement();
+
+    // Store state for debugging
+    if (window.appState) {
+      window.appState.set('components.muchandy-hero.status', 'ready');
+      window.appState.set('components.muchandy-hero.element', heroElement);
+    }
+
+    container.innerHTML = '';
     container.appendChild(heroElement);
-
     console.log('✅ Hero component added to DOM');
-
-    // Update app state
-    appState.set('components.muchandy-hero.status', 'ready');
-    appState.set('components.muchandy-hero.element', heroElement);
   };
 
-  // Retry initialization
-  const retry = async () => {
-    console.log('🔄 Retrying initialization...');
-    await initialize();
-  };
+  // Start initialization immediately
+  const initPromise = initialize();
 
-  // Update hero props
-  const update = (newProps) => {
-    if (isDestroyed) return;
-
-    // Update hero if it exists
-    if (hero && currentState === 'ready') {
-      // Update visual props directly
-      if (newProps.title !== undefined) hero.setTitle(newProps.title);
-      if (newProps.subtitle !== undefined) hero.setSubtitle(newProps.subtitle);
-      if (newProps.backgroundImageUrl !== undefined) {
-        hero.setBackgroundImageUrl(newProps.backgroundImageUrl);
-      }
-    }
-  };
-
-  // Destroy component
-  const destroy = () => {
-    if (isDestroyed) return;
-
-    console.log('🗑️ Destroying StoryblokMuchandyHero...');
-
-    isDestroyed = true;
-
-    // Destroy forms
-    repairForm?.destroy?.();
-    buybackForm?.destroy?.();
-
-    // Destroy hero
-    hero?.destroy?.();
-
-    // Clear container
-    if (container) {
-      container.innerHTML = '';
-      container = null;
-    }
-
-    console.log('✅ StoryblokMuchandyHero destroyed');
-  };
-
-  // Return component API
+  // Component API
   return {
-    getElement: getContainer,
-    update,
-    destroy,
-    retry,
-    getState: () => currentState,
+    /**
+     * Get the component element
+     * @returns {HTMLElement}
+     */
+    getElement() {
+      return createContainer();
+    },
+
+    /**
+     * Update component props
+     * @param {Object} newProps
+     */
+    update(newProps) {
+      if (!hero || isDestroyed) return;
+
+      // Update hero with new props
+      const {
+        background_image: newBgImage,
+        title: newTitle,
+        subtitle: newSubtitle,
+        className: newClassName,
+        default_tab: newDefaultTab,
+      } = newProps;
+
+      const updates = {};
+
+      if (newBgImage !== undefined) {
+        updates.backgroundImageUrl =
+          typeof newBgImage === 'string'
+            ? newBgImage
+            : newBgImage.filename || '';
+      }
+
+      if (newTitle !== undefined) updates.title = newTitle;
+      if (newSubtitle !== undefined) updates.subtitle = newSubtitle;
+      if (newClassName !== undefined) updates.className = newClassName;
+      if (newDefaultTab !== undefined) updates.defaultTab = newDefaultTab;
+
+      hero.update(updates);
+    },
+
+    /**
+     * Destroy component
+     */
+    destroy() {
+      console.log('🗑️ Destroying StoryblokMuchandyHero...');
+      isDestroyed = true;
+
+      if (hero) {
+        hero.destroy();
+        hero = null;
+      }
+
+      if (repairForm) {
+        repairForm.destroy();
+        repairForm = null;
+      }
+
+      if (buybackForm) {
+        buybackForm.destroy();
+        buybackForm = null;
+      }
+
+      if (container) {
+        container.remove();
+        container = null;
+      }
+
+      apiService = null;
+      isInitialized = false;
+    },
+
+    /**
+     * Wait for initialization (for testing)
+     */
+    async waitForInitialization() {
+      return initPromise;
+    },
+
+    /**
+     * Get initialization status
+     */
+    isInitialized() {
+      return isInitialized;
+    },
   };
 }
 
-// Export for StoryblokComponent
+// Also export as default
 export default StoryblokMuchandyHero;
 
 console.log('✅ StoryblokMuchandyHero wrapper ready');

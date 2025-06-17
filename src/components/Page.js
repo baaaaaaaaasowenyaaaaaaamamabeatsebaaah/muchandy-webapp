@@ -5,6 +5,7 @@ import { renderStoryblokComponents } from './StoryblokComponent.js';
 import { storyblok } from '../services/storyblok.js';
 import { seoService } from '../services/seoService.js';
 import { appState } from '../utils/stateStore.js';
+import { createElement } from 'svarog-ui-core';
 
 console.log('=== ENHANCED PAGE COMPONENT ===');
 
@@ -172,7 +173,7 @@ export class EnhancedPage extends MuchandyComponent {
 
   // === CUSTOM METHODS ===
 
-  // Render story content into page - Fixed to properly pass content
+  // Render story content with async component support - FIXED
   renderStoryContent() {
     const story = this.state.story;
     if (!story?.content?.body) {
@@ -186,31 +187,66 @@ export class EnhancedPage extends MuchandyComponent {
       // Render Storyblok components
       const renderedContent = renderStoryblokComponents(story.content.body);
 
-      // FIX: Pass content properly to the page component
-      // First, clear loading state
+      // Clear loading state
       this.pageComponent.setLoading(false);
 
-      // Then set the actual content
-      if (renderedContent) {
-        // If renderedContent is a DOM element, wrap it properly
-        const contentWrapper = {
-          children: [renderedContent], // Wrap in array as expected by Page
-          html: renderedContent.outerHTML || renderedContent.innerHTML || '',
-        };
+      // Create content wrapper
+      const contentWrapper = createElement('div', {
+        className: 'page-content-wrapper',
+      });
 
-        // Update the page content
-        this.pageComponent.setContent(contentWrapper);
+      // Append the fragment
+      contentWrapper.appendChild(renderedContent);
+
+      // Find the main element in the page
+      const mainElement = this.pageComponent
+        .getElement()
+        .querySelector('.page__main');
+      if (mainElement) {
+        mainElement.innerHTML = '';
+        mainElement.appendChild(contentWrapper);
+
+        // CRITICAL: Check for async components that need DOM insertion
+        this.checkAsyncComponents(mainElement);
       }
 
       console.log('✅ Story content rendered');
     } catch (error) {
       console.error('❌ Failed to render story content:', error);
-
       this.pageComponent.setError({
         title: 'Darstellungsfehler',
         message: 'Der Seiteninhalt konnte nicht korrekt dargestellt werden.',
         code: 500,
       });
+    }
+  }
+
+  // Add this helper method with proper window reference
+  checkAsyncComponents(container) {
+    // Check if MutationObserver is available (browser environment)
+    if (typeof window !== 'undefined' && window.MutationObserver) {
+      // Monitor for MuchandyHero specifically
+      const observer = new window.MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (
+              node.nodeType === 1 &&
+              node.classList?.contains('muchandy-hero')
+            ) {
+              console.log('✅ MuchandyHero successfully added to DOM');
+              observer.disconnect();
+            }
+          });
+        });
+      });
+
+      observer.observe(container, {
+        childList: true,
+        subtree: true,
+      });
+
+      // Disconnect after 10 seconds to prevent memory leaks
+      setTimeout(() => observer.disconnect(), 10000);
     }
   }
 
@@ -251,7 +287,7 @@ export class EnhancedPage extends MuchandyComponent {
     try {
       await this.load();
       await this.rerender();
-    } catch (error) {
+    } catch {
       // Error already handled in load()
     }
   }
