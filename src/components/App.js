@@ -204,7 +204,7 @@ class EnhancedApp extends MuchandyComponent {
       style: { flex: '1', width: '100%' },
     });
 
-    const main = createElement('main', {
+    const main = createElement('div', {
       className: 'app-main',
       style: { flex: '1', display: 'flex', flexDirection: 'column' },
       children: [this.pageContainer],

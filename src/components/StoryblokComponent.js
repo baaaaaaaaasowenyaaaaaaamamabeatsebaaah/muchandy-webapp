@@ -6,7 +6,6 @@ import {
 
 import { serviceCoordinator } from '../utils/serviceCoordinator.js';
 import { appState } from '../utils/stateStore.js';
-import { router } from '../utils/router.js';
 
 console.log('=== STORYBLOK COMPONENT WITH FIXED API MAPPING ===');
 
@@ -49,52 +48,54 @@ function renderMuchandyHero(blok) {
 
 // Helper function to create hero with service
 function createMuchandyHeroWithService(blok, apiService) {
-  // Create repair service wrapper with proper interface
-  const repairService = createRepairServiceWrapper(apiService);
-
-  // Create buyback service wrapper with proper interface
-  const buybackService = createBuybackServiceWrapper(apiService);
-
-  // Validate service interfaces before creating container
   try {
+    // Create repair service wrapper with proper interface
+    const repairService = createRepairServiceWrapper(apiService);
+
+    // Create buyback service wrapper with proper interface
+    const buybackService = createBuybackServiceWrapper(apiService);
+
+    // Validate service interfaces before creating container
     validateServiceInterfaces(repairService, buybackService);
+
+    console.log('📦 Creating MuchandyHeroContainer with services...');
+
+    // Create container with validated services from svarog-ui
+    const heroContainer = MuchandyHeroContainer({
+      // Services - properly wrapped and validated
+      repairService,
+      buybackService,
+
+      // Hero props from Storyblok with proper fallbacks
+      backgroundImageUrl: blok.background_image?.filename || '',
+      title: blok.title || 'Finden Sie<br>Ihren Preis',
+      subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
+      defaultTab: blok.default_tab || 'repair',
+
+      // Additional props from Storyblok
+      className: blok.className || 'muchandy-hero-from-storyblok',
+
+      // Callbacks with proper error handling
+      onScheduleClick: createScheduleClickHandler(),
+      onSubmit: createSubmitHandler(),
+
+      // Error handling callbacks
+      onError: (error) => {
+        console.error('🚨 MuchandyHeroContainer error:', error);
+        appState.set('components.muchandy-hero.error', error.message);
+      },
+    });
+
+    // Track component creation in state
+    appState.set('components.muchandy-hero.status', 'created');
+    appState.set('components.muchandy-hero.source', 'storyblok');
+
+    console.log('✅ MuchandyHeroContainer created successfully');
+    return heroContainer;
   } catch (error) {
-    console.error('❌ Service interface validation failed:', error.message);
+    console.error('❌ Failed to create MuchandyHeroContainer:', error);
     return createErrorHeroContainer(blok, error);
   }
-
-  // Create container with validated services from svarog-ui
-  const heroContainer = MuchandyHeroContainer({
-    // Services - properly wrapped and validated
-    repairService,
-    buybackService,
-
-    // Hero props from Storyblok with proper fallbacks
-    backgroundImageUrl: blok.background_image?.filename || '',
-    title: blok.title || 'Finden Sie<br>Ihren Preis',
-    subtitle: blok.subtitle || 'Jetzt Preis berechnen.',
-    defaultTab: blok.default_tab || 'repair',
-
-    // Additional props from Storyblok
-    className: blok.className || 'muchandy-hero-from-storyblok',
-
-    // Callbacks with proper error handling
-    onScheduleClick: createScheduleClickHandler(),
-    onSubmit: createSubmitHandler(),
-
-    // Error handling callbacks
-    onError: (error) => {
-      console.error('🚨 MuchandyHeroContainer error:', error);
-      appState.set('components.muchandy-hero.error', error.message);
-    },
-  });
-
-  // Track component creation in state
-  appState.set('components.muchandy-hero.status', 'created');
-  appState.set('components.muchandy-hero.source', 'storyblok');
-
-  console.log('✅ MuchandyHeroContainer created successfully');
-  return heroContainer;
 }
 
 /**
@@ -115,11 +116,20 @@ function createRepairServiceWrapper(apiService) {
           result?.length || 0
         );
 
-        // Remove the debug check for fallback data since we're getting real data
+        // Ensure we return an array
+        if (!Array.isArray(result)) {
+          console.error(
+            '❌ RepairService: Invalid manufacturers data:',
+            result
+          );
+          return [];
+        }
+
         return result;
       } catch (error) {
         console.error('❌ RepairService: fetchManufacturers failed:', error);
-        return apiService.getFallbackManufacturers?.() || [];
+        // Always return an array, even on error
+        return [];
       }
     },
 
@@ -138,10 +148,17 @@ function createRepairServiceWrapper(apiService) {
 
         const result = await apiService.fetchDevices(manufacturerId);
         console.log('✅ RepairService: devices loaded:', result?.length || 0);
+
+        // Ensure we return an array
+        if (!Array.isArray(result)) {
+          console.error('❌ RepairService: Invalid devices data:', result);
+          return [];
+        }
+
         return result;
       } catch (error) {
         console.error('❌ RepairService: fetchDevices failed:', error);
-        return apiService.getFallbackDevices?.(manufacturerId) || [];
+        return [];
       }
     },
 
@@ -158,10 +175,17 @@ function createRepairServiceWrapper(apiService) {
         // Use the correct method that maps to the right endpoint
         const result = await apiService.fetchActionsByDevice(deviceId);
         console.log('✅ RepairService: actions loaded:', result?.length || 0);
+
+        // Ensure we return an array
+        if (!Array.isArray(result)) {
+          console.error('❌ RepairService: Invalid actions data:', result);
+          return [];
+        }
+
         return result;
       } catch (error) {
         console.error('❌ RepairService: fetchActions failed:', error);
-        return apiService.getFallbackActions?.() || [];
+        return [];
       }
     },
 
@@ -180,22 +204,18 @@ function createRepairServiceWrapper(apiService) {
 
         // Ensure we return the expected format
         const price = {
-          amount: response.amount || 0,
-          currency: response.currency || 'EUR',
-          formatted: response.formatted || '0 €',
-          price: response.price || 0,
+          amount: response?.amount || 0,
+          currency: response?.currency || 'EUR',
+          formatted: response?.formatted || '0 €',
+          price: response?.price || 0,
         };
 
         console.log('✅ RepairService: price loaded:', price);
         return price;
       } catch (error) {
         console.error('❌ RepairService: fetchPrice failed:', error);
-        return {
-          amount: 0,
-          currency: 'EUR',
-          formatted: '0 €',
-          price: 0,
-        };
+        // Return null on error as expected by the component
+        return null;
       }
     },
   };
@@ -260,10 +280,20 @@ function createBuybackServiceWrapper(apiService) {
           '✅ BuybackService: manufacturers loaded:',
           result?.length || 0
         );
+
+        // Ensure we return an array
+        if (!Array.isArray(result)) {
+          console.error(
+            '❌ BuybackService: Invalid manufacturers data:',
+            result
+          );
+          return [];
+        }
+
         return result;
       } catch (error) {
         console.error('❌ BuybackService: fetchManufacturers failed:', error);
-        return apiService.getFallbackManufacturers?.() || [];
+        return [];
       }
     },
 
@@ -282,10 +312,17 @@ function createBuybackServiceWrapper(apiService) {
 
         const result = await apiService.fetchDevices(manufacturerId);
         console.log('✅ BuybackService: devices loaded:', result?.length || 0);
+
+        // Ensure we return an array
+        if (!Array.isArray(result)) {
+          console.error('❌ BuybackService: Invalid devices data:', result);
+          return [];
+        }
+
         return result;
       } catch (error) {
         console.error('❌ BuybackService: fetchDevices failed:', error);
-        return apiService.getFallbackDevices?.(manufacturerId) || [];
+        return [];
       }
     },
 
@@ -339,7 +376,7 @@ function createBuybackServiceWrapper(apiService) {
         // Get device prices to calculate buyback value
         let basePrice = 300; // Default base price
 
-        if (currentDeviceId) {
+        if (currentDeviceId && apiService.fetchDevicePrices) {
           try {
             // Fetch all prices for the device
             const devicePrices =
@@ -386,12 +423,8 @@ function createBuybackServiceWrapper(apiService) {
         return price;
       } catch (error) {
         console.error('❌ BuybackService: fetchPrice failed:', error);
-        return {
-          amount: 0,
-          currency: 'EUR',
-          formatted: '0 €',
-          price: 0,
-        };
+        // Return null on error as expected by the component
+        return null;
       }
     },
   };
@@ -759,10 +792,37 @@ if (import.meta.env.DEV) {
     }
   };
 
+  // Add debug helper to check MuchandyHero state
+  window.debugMuchandyHero = () => {
+    console.log('=== MUCHANDY HERO DEBUG ===');
+    const heroState = appState.get('components.muchandy-hero');
+    console.log('Hero State:', heroState);
+
+    // Check if there are any MuchandyHero elements in DOM
+    const heroElements = document.querySelectorAll(
+      '.muchandy-hero, .muchandy-hero-enhanced'
+    );
+    console.log('Hero Elements in DOM:', heroElements.length);
+
+    heroElements.forEach((el, i) => {
+      console.log(`Hero ${i + 1}:`, {
+        classes: el.className,
+        hasTabsContainer: !!el.querySelector('.tabs-container'),
+        hasForms: !!el.querySelector(
+          '.phone-repair-form, .used-phone-price-form'
+        ),
+        isVisible: el.offsetHeight > 0,
+      });
+    });
+
+    console.log('========================');
+  };
+
   console.log('🔧 StoryblokComponent service testing:');
   console.log(
     '  - window.testMuchandyHeroServices() - Test service interfaces'
   );
+  console.log('  - window.debugMuchandyHero() - Debug hero state');
 }
 
 console.log('✅ StoryblokComponent with correct API mapping ready!');
