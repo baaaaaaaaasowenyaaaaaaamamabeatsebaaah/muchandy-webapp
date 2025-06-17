@@ -154,6 +154,13 @@ componentRegistry.registerAsync('muchandy_hero', async () => {
   return StoryblokMuchandyHero;
 });
 
+componentRegistry.registerAsync('contact_section', async () => {
+  const { default: StoryblokContactSection } = await import(
+    './StoryblokContactSection.js'
+  );
+  return StoryblokContactSection;
+});
+
 // Development helpers
 if (import.meta.env.DEV) {
   window.componentRegistry = componentRegistry;

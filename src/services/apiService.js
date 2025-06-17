@@ -16,9 +16,11 @@ console.log('=== ENHANCED API SERVICE LOADING ===');
 class ApiService {
   constructor() {
     // Use environment variable or current origin
-    this.baseUrl = import.meta.env?.VITE_API_URL || window.location.origin;
+    this.baseUrl = import.meta.env.PROD
+      ? ''
+      : import.meta.env.VITE_API_URL || window.location.origin;
     console.log(
-      `🔧 Enhanced ApiService initialized with baseUrl: ${this.baseUrl}`
+      `🔧 Enhanced ApiService initialized with baseUrl: ${this.baseUrl || 'same-origin'}`
     );
 
     this.retry = new RetryManager({
