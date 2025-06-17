@@ -1,7 +1,7 @@
 # Multi-stage build for optimal image size
 FROM node:20-alpine AS builder
 
-# Install build dependencies for Prisma and Puppeteer
+# Install build dependencies for Prisma
 RUN apk add --no-cache \
     python3 \
     make \
@@ -15,16 +15,26 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install ALL dependencies (including dev) for building
+# Install ALL dependencies for building
 RUN npm ci
 
 # Copy application code
 COPY . .
 
+# Build arguments for Vite environment variables
+ARG VITE_STORYBLOK_TOKEN
+ARG VITE_STORYBLOK_VERSION
+ARG VITE_STORYBLOK_SPACE_ID
+
+# Set build-time environment variables
+ENV VITE_STORYBLOK_TOKEN=$VITE_STORYBLOK_TOKEN
+ENV VITE_STORYBLOK_VERSION=$VITE_STORYBLOK_VERSION
+ENV VITE_STORYBLOK_SPACE_ID=$VITE_STORYBLOK_SPACE_ID
+
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build the application
+# Build the application with environment variables
 RUN npm run build
 
 # Production stage
@@ -51,47 +61,37 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy package files and install only production dependencies
+# Copy package files and install production dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Force rebuild with Express 4
 RUN npm ci --only=production --force && npx prisma generate
 
-# Copy built application from builder stage
+# Copy built application from builder
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --chown=nodejs:nodejs server.js ./
 COPY --chown=nodejs:nodejs src ./src
 
-# Create directory for SQLite database with proper permissions
+# Create directory for SQLite database
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
 
-# Copy the database file from your repo
+# Copy database files
 COPY --chown=nodejs:nodejs prisma/dev.db /app/data/prod.db
 COPY --chown=nodejs:nodejs prisma/dev.db-journal /app/data/prod.db-journal
 
-# Make entrypoint script executable
+# Copy entrypoint script
 COPY --chown=nodejs:nodejs scripts/docker-entrypoint.sh ./scripts/
 RUN chmod +x ./scripts/docker-entrypoint.sh
 
 # Switch to non-root user
 USER nodejs
 
-# Expose ports
+# Expose port
 EXPOSE 3001
 
-# Add health check with more time
+# Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=5 \
     CMD node -e "fetch('http://localhost:3001/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
-# Direct startup with detailed logging
-CMD ["sh", "-c", "echo '🚀 Starting container...' && \
-     echo '📁 Current directory:' && pwd && \
-     echo '📋 Files in directory:' && ls -la && \
-     echo '🗄️ Database URL: '${DATABASE_URL} && \
-     echo '🔧 Running Prisma migrations...' && \
-     npx prisma migrate deploy --skip-generate || \
-     (echo '⚠️ Migrations failed, trying db push...' && npx prisma db push --skip-generate) && \
-     echo '✅ Database ready' && \
-     echo '🌐 Starting server on port '${PORT:-3001} && \
-     node server.js"]
+# Use entrypoint script
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]

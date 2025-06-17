@@ -2,32 +2,33 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        - VITE_STORYBLOK_TOKEN=${VITE_STORYBLOK_TOKEN}
+        - VITE_STORYBLOK_VERSION=${VITE_STORYBLOK_VERSION:-published}
+        - VITE_STORYBLOK_SPACE_ID=${VITE_STORYBLOK_SPACE_ID}
     ports:
       - '3001:3001'
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/prod.db
       - PORT=3001
-      # Pass through Storyblok env vars
+      # Runtime environment variables (not needed for built app)
       - VITE_STORYBLOK_TOKEN=${VITE_STORYBLOK_TOKEN}
       - VITE_STORYBLOK_VERSION=${VITE_STORYBLOK_VERSION:-published}
       - VITE_STORYBLOK_SPACE_ID=${VITE_STORYBLOK_SPACE_ID}
     volumes:
-      # Persist SQLite database
       - sqlite_data:/app/data
-      # Persist crawled data cache
       - crawler_cache:/app/.cache
     restart: unless-stopped
     healthcheck:
       test:
         [
           'CMD',
-          'wget',
-          '--no-verbose',
-          '--tries=1',
-          '--spider',
-          'http://localhost:3001/health',
+          'node',
+          '-e',
+          "fetch('http://localhost:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
         ]
       interval: 30s
       timeout: 10s
